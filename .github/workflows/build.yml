@@ -12,14 +12,15 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
+      - name: Accept Android licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null || true
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.7
       - name: Create Android project
         run: |
           mkdir -p app/src/main/java/com/glassos/app app/src/main/res/mipmap-xxxhdpi
-          curl -fsSL https://famous-seahorse-a048ef.netlify.app/icon-512.png -o app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          curl -fsSL https://famous-seahorse-a048ef.netlify.app/icon-512.png -o app/src/main/res/mipmap-xxxhdpi/ic_launcher.png || true
           cat > settings.gradle <<'EOF'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
           dependencyResolutionManagement { repositories { google(); mavenCentral() } }
@@ -104,6 +105,8 @@ jobs:
             }
           }
           EOF
+          I=app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          head -c 8 "$I" 2>/dev/null | grep -q PNG || { rm -f "$I"; sed -i 's# android:icon="@mipmap/ic_launcher"##' app/src/main/AndroidManifest.xml; }
       - run: gradle assembleDebug
       - uses: actions/upload-artifact@v4
         with:
