@@ -46,6 +46,7 @@ jobs:
           cat > app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
             <uses-permission android:name="android.permission.INTERNET"/>
+            <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
             <uses-permission android:name="android.permission.CAMERA"/>
             <uses-permission android:name="android.permission.RECORD_AUDIO"/>
             <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
@@ -66,12 +67,19 @@ jobs:
           import android.app.Activity
           import android.content.Intent
           import android.net.Uri
+          import android.os.Build
+          import android.provider.OpenableColumns
+          import android.provider.Settings
+          import android.widget.Toast
+          import org.json.JSONObject
+          import java.io.File
           import android.os.Bundle
           import android.webkit.*
           import java.net.HttpURLConnection
           import java.net.URL
           class MainActivity : Activity() {
             private lateinit var w: WebView
+            private var fcb: ValueCallback<Array<Uri>>? = null
             private val home = "https://famous-seahorse-a048ef.netlify.app"
             private fun ext(u: Uri) { try { startActivity(Intent(Intent.ACTION_VIEW, u)) } catch (e: Exception) {} }
             private fun openIntent(s: String) {
@@ -83,10 +91,39 @@ jobs:
                 ext(Uri.parse(f ?: ("https://play.google.com/store/apps/details?id=" + pkg)))
               } catch (e: Exception) {}
             }
+            inner class Bridge { @JavascriptInterface fun openExternal(u: String) { runOnUiThread { ext(Uri.parse(u)) } } }
+            private fun installApk(u: Uri) {
+              try {
+                val f = File(cacheDir, "import.apk")
+                contentResolver.openInputStream(u)!!.use { i -> f.outputStream().use { o -> i.copyTo(o) } }
+                val info = packageManager.getPackageArchiveInfo(f.path, 0)
+                if (info == null) { Toast.makeText(this, "That file is not a valid APK", Toast.LENGTH_LONG).show(); return }
+                info.applicationInfo?.let { it.sourceDir = f.path; it.publicSourceDir = f.path }
+                val label = info.applicationInfo?.loadLabel(packageManager)?.toString() ?: info.packageName
+                if (Build.VERSION.SDK_INT >= 26 && !packageManager.canRequestPackageInstalls()) {
+                  Toast.makeText(this, "Allow GlassOS to install apps, then choose the file again", Toast.LENGTH_LONG).show()
+                  startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + packageName))); return
+                }
+                val j = JSONObject().put("pkg", info.packageName).put("label", label)
+                w.evaluateJavascript("window.glassApk&&glassApk(" + j.toString() + ")", null)
+                startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(u, "application/vnd.android.package-archive").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+              } catch (e: Exception) { Toast.makeText(this, "Could not open that APK", Toast.LENGTH_LONG).show() }
+            }
+            override fun onActivityResult(rc: Int, res: Int, d: Intent?) {
+              super.onActivityResult(rc, res, d)
+              if (rc != 7) return
+              val cb = fcb; fcb = null
+              val u = d?.data
+              if (res != RESULT_OK || u == null) { cb?.onReceiveValue(null); return }
+              var name = ""
+              try { contentResolver.query(u, null, null, null, null)?.use { c -> if (c.moveToFirst()) { val i = c.getColumnIndex(OpenableColumns.DISPLAY_NAME); if (i >= 0) name = c.getString(i) ?: "" } } } catch (e: Exception) {}
+              if (name.lowercase().endsWith(".apk")) { cb?.onReceiveValue(null); installApk(u) } else cb?.onReceiveValue(arrayOf(u))
+            }
             override fun onCreate(b: Bundle?) {
               super.onCreate(b)
               requestPermissions(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO), 1)
               w = WebView(this); setContentView(w)
+              w.addJavascriptInterface(Bridge(), "GlassNative")
               w.settings.javaScriptEnabled = true
               w.settings.domStorageEnabled = true
               w.settings.databaseEnabled = true
@@ -96,6 +133,13 @@ jobs:
               CookieManager.getInstance().setAcceptThirdPartyCookies(w, true)
               w.webChromeClient = object : WebChromeClient() {
                 override fun onPermissionRequest(r: PermissionRequest) { r.grant(r.resources) }
+                override fun onShowFileChooser(v: WebView, cb: ValueCallback<Array<Uri>>, p: FileChooserParams): Boolean {
+                  fcb?.onReceiveValue(null); fcb = cb
+                  return try {
+                    val i = Intent(Intent.ACTION_GET_CONTENT); i.addCategory(Intent.CATEGORY_OPENABLE); i.type = "*/*"
+                    this@MainActivity.startActivityForResult(Intent.createChooser(i, "Choose file"), 7); true
+                  } catch (e: Exception) { fcb = null; false }
+                }
               }
               w.webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView, r: WebResourceRequest): Boolean {
