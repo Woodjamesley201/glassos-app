@@ -49,6 +49,7 @@ jobs:
             <uses-permission android:name="android.permission.CAMERA"/>
             <uses-permission android:name="android.permission.RECORD_AUDIO"/>
             <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+            <queries><intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent></queries>
             <application android:label="GlassOS" android:icon="@mipmap/ic_launcher" android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
               <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode">
                 <intent-filter>
@@ -62,25 +63,51 @@ jobs:
           cat > app/src/main/java/com/glassos/app/MainActivity.kt <<'EOF'
           package com.glassos.app
           import android.Manifest
+          import android.app.Activity
+          import android.content.Intent
+          import android.net.Uri
           import android.os.Bundle
           import android.webkit.*
-          import android.app.Activity
           import java.net.HttpURLConnection
           import java.net.URL
           class MainActivity : Activity() {
+            private lateinit var w: WebView
+            private val home = "https://famous-seahorse-a048ef.netlify.app"
+            private fun ext(u: Uri) { try { startActivity(Intent(Intent.ACTION_VIEW, u)) } catch (e: Exception) {} }
+            private fun openIntent(s: String) {
+              try {
+                val i = Intent.parseUri(s, Intent.URI_INTENT_SCHEME)
+                val pkg = i.`package`
+                if (pkg != null) { val l = packageManager.getLaunchIntentForPackage(pkg); if (l != null) { startActivity(l); return } }
+                val f = i.getStringExtra("browser_fallback_url")
+                ext(Uri.parse(f ?: ("https://play.google.com/store/apps/details?id=" + pkg)))
+              } catch (e: Exception) {}
+            }
             override fun onCreate(b: Bundle?) {
               super.onCreate(b)
               requestPermissions(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO), 1)
-              val w = WebView(this); setContentView(w)
+              w = WebView(this); setContentView(w)
               w.settings.javaScriptEnabled = true
               w.settings.domStorageEnabled = true
+              w.settings.databaseEnabled = true
               w.settings.mediaPlaybackRequiresUserGesture = false
               w.settings.userAgentString = w.settings.userAgentString.replace("; wv", "")
+              CookieManager.getInstance().setAcceptCookie(true)
               CookieManager.getInstance().setAcceptThirdPartyCookies(w, true)
               w.webChromeClient = object : WebChromeClient() {
                 override fun onPermissionRequest(r: PermissionRequest) { r.grant(r.resources) }
               }
               w.webViewClient = object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(view: WebView, r: WebResourceRequest): Boolean {
+                  val u = r.url
+                  val s = u.scheme ?: ""
+                  if (s == "intent") { openIntent(u.toString()); return true }
+                  if (s != "http" && s != "https") { ext(u); return true }
+                  val h = u.host ?: ""
+                  if (h == Uri.parse(home).host || h.endsWith("google.com") || h.endsWith("youtube.com") || h.endsWith("gstatic.com")) return false
+                  ext(u); return true
+                }
+          override fun onPageFinished(view: WebView, url: String) { CookieManager.getInstance().flush() }
                 override fun shouldInterceptRequest(view: WebView, r: WebResourceRequest): WebResourceResponse? {
                   if (r.isForMainFrame || r.method != "GET") return null
                   if (r.requestHeaders["Accept"]?.contains("text/html") != true) return null
@@ -100,8 +127,14 @@ jobs:
                   } catch (e: Exception) { null }
                 }
               }
-              w.loadUrl("https://famous-seahorse-a048ef.netlify.app")
+              if (b != null) w.restoreState(b) else w.loadUrl(home)
             }
+            override fun onSaveInstanceState(o: Bundle) { super.onSaveInstanceState(o); w.saveState(o) }
+            override fun onPause() { CookieManager.getInstance().flush(); w.onPause(); super.onPause() }
+          override fun onStop() { CookieManager.getInstance().flush(); super.onStop() }
+            override fun onResume() { super.onResume(); w.onResume() }
+            @Deprecated("Deprecated in Java")
+            override fun onBackPressed() { if (w.canGoBack()) w.goBack() else super.onBackPressed() }
           }
           EOF
           I=app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
