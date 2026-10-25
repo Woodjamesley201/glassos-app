@@ -42,7 +42,6 @@ jobs:
             compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
             kotlinOptions { jvmTarget = '17' }
           }
-          dependencies { implementation 'androidx.appcompat:appcompat:1.7.0' }
           EOF
           cat > app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -50,7 +49,7 @@ jobs:
             <uses-permission android:name="android.permission.CAMERA"/>
             <uses-permission android:name="android.permission.RECORD_AUDIO"/>
             <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
-            <application android:label="GlassOS" android:icon="@mipmap/ic_launcher" android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
+            <application android:label="GlassOS" android:icon="@mipmap/ic_launcher" android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
               <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode">
                 <intent-filter>
                   <action android:name="android.intent.action.MAIN"/>
@@ -65,10 +64,10 @@ jobs:
           import android.Manifest
           import android.os.Bundle
           import android.webkit.*
-          import androidx.appcompat.app.AppCompatActivity
+          import android.app.Activity
           import java.net.HttpURLConnection
           import java.net.URL
-          class MainActivity : AppCompatActivity() {
+          class MainActivity : Activity() {
             override fun onCreate(b: Bundle?) {
               super.onCreate(b)
               requestPermissions(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO), 1)
