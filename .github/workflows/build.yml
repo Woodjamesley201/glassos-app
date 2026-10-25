@@ -1,0 +1,111 @@
+name: Build GlassOS APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+      - name: Create Android project
+        run: |
+          mkdir -p app/src/main/java/com/glassos/app app/src/main/res/mipmap-xxxhdpi
+          curl -fsSL https://famous-seahorse-a048ef.netlify.app/icon-512.png -o app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          cat > settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositories { google(); mavenCentral() } }
+          rootProject.name = "GlassOS"
+          include ":app"
+          EOF
+          cat > build.gradle <<'EOF'
+          plugins {
+            id 'com.android.application' version '8.5.2' apply false
+            id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
+          }
+          EOF
+          cat > app/build.gradle <<'EOF'
+          plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
+          android {
+            namespace 'com.glassos.app'
+            compileSdk 34
+            defaultConfig { applicationId 'com.glassos.app'; minSdk 24; targetSdk 34; versionCode 1; versionName '1.0' }
+            compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+            kotlinOptions { jvmTarget = '17' }
+          }
+          dependencies { implementation 'androidx.appcompat:appcompat:1.7.0' }
+          EOF
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET"/>
+            <uses-permission android:name="android.permission.CAMERA"/>
+            <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+            <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+            <application android:label="GlassOS" android:icon="@mipmap/ic_launcher" android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
+              <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode">
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN"/>
+                  <category android:name="android.intent.category.LAUNCHER"/>
+                </intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          EOF
+          cat > app/src/main/java/com/glassos/app/MainActivity.kt <<'EOF'
+          package com.glassos.app
+          import android.Manifest
+          import android.os.Bundle
+          import android.webkit.*
+          import androidx.appcompat.app.AppCompatActivity
+          import java.net.HttpURLConnection
+          import java.net.URL
+          class MainActivity : AppCompatActivity() {
+            override fun onCreate(b: Bundle?) {
+              super.onCreate(b)
+              requestPermissions(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO), 1)
+              val w = WebView(this); setContentView(w)
+              w.settings.javaScriptEnabled = true
+              w.settings.domStorageEnabled = true
+              w.settings.mediaPlaybackRequiresUserGesture = false
+              w.settings.userAgentString = w.settings.userAgentString.replace("; wv", "")
+              CookieManager.getInstance().setAcceptThirdPartyCookies(w, true)
+              w.webChromeClient = object : WebChromeClient() {
+                override fun onPermissionRequest(r: PermissionRequest) { r.grant(r.resources) }
+              }
+              w.webViewClient = object : WebViewClient() {
+                override fun shouldInterceptRequest(view: WebView, r: WebResourceRequest): WebResourceResponse? {
+                  if (r.isForMainFrame || r.method != "GET") return null
+                  if (r.requestHeaders["Accept"]?.contains("text/html") != true) return null
+                  return try {
+                    val url = r.url.toString()
+                    val c = URL(url).openConnection() as HttpURLConnection
+                    r.requestHeaders.filterKeys { it != "Accept-Encoding" }.forEach { (k, x) -> c.setRequestProperty(k, x) }
+                    CookieManager.getInstance().getCookie(url)?.let { c.setRequestProperty("Cookie", it) }
+                    val drop = setOf("x-frame-options", "content-security-policy", "content-security-policy-report-only", "content-length", "content-encoding")
+                    val h = HashMap<String, String>()
+                    c.headerFields.forEach { (k, x) ->
+                      if (k == null) return@forEach
+                      if (k.equals("set-cookie", true)) x.forEach { CookieManager.getInstance().setCookie(url, it) }
+                      else if (k.lowercase() !in drop) h[k] = x.joinToString(",")
+                    }
+                    WebResourceResponse((c.contentType ?: "text/html").substringBefore(";"), "utf-8", c.responseCode, (c.responseMessage ?: "").ifBlank { "OK" }, h, c.inputStream)
+                  } catch (e: Exception) { null }
+                }
+              }
+              w.loadUrl("https://famous-seahorse-a048ef.netlify.app")
+            }
+          }
+          EOF
+      - run: gradle assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GlassOS-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
