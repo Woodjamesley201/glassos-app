@@ -1,151 +1,286 @@
-name: Build GlassOS APK
-on:
-  workflow_dispatch:
-  push:
-    branches: [main]
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-      - name: Accept Android licenses
-        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null || true
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.7
-      - name: Create Android project
-        run: |
-          mkdir -p app/src/main/java/com/glassos/app app/src/main/res/mipmap-xxxhdpi
-          curl -fsSL https://famous-seahorse-a048ef.netlify.app/icon-512.png -o app/src/main/res/mipmap-xxxhdpi/ic_launcher.png || true
-          cat > settings.gradle <<'EOF'
-          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
-          dependencyResolutionManagement { repositories { google(); mavenCentral() } }
-          rootProject.name = "GlassOS"
-          include ":app"
-          EOF
-          cat > build.gradle <<'EOF'
-          plugins {
-            id 'com.android.application' version '8.5.2' apply false
-            id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
-          }
-          EOF
-          cat > app/build.gradle <<'EOF'
-          plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
-          android {
-            namespace 'com.glassos.app'
-            compileSdk 34
-            defaultConfig { applicationId 'com.glassos.app'; minSdk 24; targetSdk 34; versionCode 1; versionName '1.0' }
-            compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
-            kotlinOptions { jvmTarget = '17' }
-          }
-          EOF
-          cat > app/src/main/AndroidManifest.xml <<'EOF'
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-            <uses-permission android:name="android.permission.INTERNET"/>
-            <uses-permission android:name="android.permission.CAMERA"/>
-            <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-            <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
-            <queries><intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent></queries>
-            <application android:label="GlassOS" android:icon="@mipmap/ic_launcher" android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
-              <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode">
-                <intent-filter>
-                  <action android:name="android.intent.action.MAIN"/>
-                  <category android:name="android.intent.category.LAUNCHER"/>
-                </intent-filter>
-              </activity>
-            </application>
-          </manifest>
-          EOF
-          cat > app/src/main/java/com/glassos/app/MainActivity.kt <<'EOF'
-          package com.glassos.app
-          import android.Manifest
-          import android.app.Activity
-          import android.content.Intent
-          import android.net.Uri
-          import android.os.Bundle
-          import android.webkit.*
-          import java.net.HttpURLConnection
-          import java.net.URL
-          class MainActivity : Activity() {
-            private lateinit var w: WebView
-            private val home = "https://famous-seahorse-a048ef.netlify.app"
-            private var fcb: ValueCallback<Array<Uri>>? = null
-            private fun ext(u: Uri) { try { startActivity(Intent(Intent.ACTION_VIEW, u)) } catch (e: Exception) {} }
-            private fun openIntent(s: String) {
-              try {
-                val i = Intent.parseUri(s, Intent.URI_INTENT_SCHEME)
-                val pkg = i.`package`
-                if (pkg != null) { val l = packageManager.getLaunchIntentForPackage(pkg); if (l != null) { startActivity(l); return } }
-                val f = i.getStringExtra("browser_fallback_url")
-                ext(Uri.parse(f ?: ("https://play.google.com/store/apps/details?id=" + pkg)))
-              } catch (e: Exception) {}
-            }
-            override fun onCreate(b: Bundle?) {
-              super.onCreate(b)
-              requestPermissions(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO), 1)
-              w = WebView(this); setContentView(w)
-              w.settings.javaScriptEnabled = true
-              w.settings.domStorageEnabled = true
-              w.settings.databaseEnabled = true
-              w.settings.mediaPlaybackRequiresUserGesture = false
-              w.settings.userAgentString = w.settings.userAgentString.replace("; wv", "")
-              CookieManager.getInstance().setAcceptCookie(true)
-              CookieManager.getInstance().setAcceptThirdPartyCookies(w, true)
-              w.webChromeClient = object : WebChromeClient() {
-                override fun onPermissionRequest(r: PermissionRequest) { r.grant(r.resources) }
-                override fun onShowFileChooser(v: WebView, cb: ValueCallback<Array<Uri>>, p: WebChromeClient.FileChooserParams): Boolean {
-                  fcb?.onReceiveValue(null); fcb = cb
-                  return try { startActivityForResult(p.createIntent(), 7); true } catch (e: Exception) { fcb = null; false }
-                }
-              }
-              w.webViewClient = object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(view: WebView, r: WebResourceRequest): Boolean {
-                  val u = r.url
-                  val s = u.scheme ?: ""
-                  return !(s == "http" || s == "https" || s == "about" || s == "data" || s == "blob")
-                }
-          override fun onPageFinished(view: WebView, url: String) { CookieManager.getInstance().flush() }
-                override fun shouldInterceptRequest(view: WebView, r: WebResourceRequest): WebResourceResponse? {
-                  if (r.isForMainFrame || r.method != "GET") return null
-                  if (r.requestHeaders["Accept"]?.contains("text/html") != true) return null
-                  return try {
-                    val url = r.url.toString()
-                    val c = URL(url).openConnection() as HttpURLConnection
-                    r.requestHeaders.filterKeys { it != "Accept-Encoding" }.forEach { (k, x) -> c.setRequestProperty(k, x) }
-                    CookieManager.getInstance().getCookie(url)?.let { c.setRequestProperty("Cookie", it) }
-                    val drop = setOf("x-frame-options", "content-security-policy", "content-security-policy-report-only", "content-length", "content-encoding")
-                    val h = HashMap<String, String>()
-                    c.headerFields.forEach { (k, x) ->
-                      if (k == null) return@forEach
-                      if (k.equals("set-cookie", true)) x.forEach { CookieManager.getInstance().setCookie(url, it) }
-                      else if (k.lowercase() !in drop) h[k] = x.joinToString(",")
-                    }
-                    WebResourceResponse((c.contentType ?: "text/html").substringBefore(";"), "utf-8", c.responseCode, (c.responseMessage ?: "").ifBlank { "OK" }, h, c.inputStream)
-                  } catch (e: Exception) { null }
-                }
-              }
-              if (b != null) w.restoreState(b) else w.loadUrl(home)
-            }
-            @Deprecated("Deprecated in Java")
-            override fun onActivityResult(rc: Int, res: Int, d: Intent?) {
-              if (rc == 7) { fcb?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(res, d)); fcb = null } else super.onActivityResult(rc, res, d)
-            }
-            override fun onSaveInstanceState(o: Bundle) { super.onSaveInstanceState(o); w.saveState(o) }
-            override fun onPause() { CookieManager.getInstance().flush(); w.onPause(); super.onPause() }
-          override fun onStop() { CookieManager.getInstance().flush(); super.onStop() }
-            override fun onResume() { super.onResume(); w.onResume() }
-            @Deprecated("Deprecated in Java")
-            override fun onBackPressed() { if (w.canGoBack()) w.goBack() else super.onBackPressed() }
-          }
-          EOF
-          I=app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-          head -c 8 "$I" 2>/dev/null | grep -q PNG || { rm -f "$I"; sed -i 's# android:icon="@mipmap/ic_launcher"##' app/src/main/AndroidManifest.xml; }
-      - run: gradle assembleDebug
-      - uses: actions/upload-artifact@v4
-        with:
-          name: GlassOS-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>OneOS</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#000000">
+<style>
+:root{--ac:#0a84ff;--b:26px;--r:22.4%;--cols:4;--lw:600;--is:clamp(56px,8vw,78px);--fg:#fff;--tx:rgba(255,255,255,.62);--bg:rgba(24,24,30,.5);--wb:rgba(14,14,18,.86);--el:rgba(127,127,135,.18);--hl:rgba(255,255,255,.1);--sb:env(safe-area-inset-top,0px);--sbb:env(safe-area-inset-bottom,0px)}
+body.light{--fg:#101014;--tx:rgba(0,0,0,.55);--bg:rgba(255,255,255,.5);--wb:rgba(246,246,250,.82);--hl:rgba(0,0,0,.1)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+::-webkit-scrollbar{display:none}
+html,body{height:100%;overflow:hidden;background:#000;color:var(--fg);font:15px/1.35 -apple-system,"SF Pro Display","Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none}
+input,textarea,button{font:inherit;color:inherit}
+input,textarea{-webkit-user-select:text;user-select:text}
+button{cursor:pointer}
+#os{position:fixed;inset:0;overflow:hidden}
+#dim{position:fixed;inset:0;background:#000;pointer-events:none;z-index:2000}
+.glass{background:linear-gradient(135deg,rgba(255,255,255,.16),rgba(255,255,255,.02) 60%),var(--bg);backdrop-filter:blur(var(--b)) saturate(180%);-webkit-backdrop-filter:blur(var(--b)) saturate(180%);border:.5px solid rgba(255,255,255,.2);box-shadow:inset 0 .5px 0 rgba(255,255,255,.4),0 8px 30px rgba(0,0,0,.22)}
+#st{position:absolute;top:0;left:0;right:0;z-index:900;display:flex;justify-content:space-between;padding:calc(var(--sb) + 8px) 22px 6px;font-weight:600;font-size:14px;text-shadow:0 1px 3px rgba(0,0,0,.35);cursor:pointer}
+body.hide #si{visibility:hidden}
+#home{position:absolute;inset:0;padding:calc(var(--sb) + 56px) 4vw 200px;overflow:auto}#ig{display:grid;grid-template-columns:repeat(var(--cols),1fr);grid-auto-rows:min-content;gap:24px 4px}
+.ic{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;cursor:pointer;text-shadow:0 1px 4px rgba(0,0,0,.5);color:#fff;text-align:center}
+.ic i{width:var(--is);height:var(--is);border-radius:var(--r);display:grid;place-items:center;font-size:calc(var(--is)*.5);font-style:normal;background-image:linear-gradient(160deg,rgba(255,255,255,.4),rgba(255,255,255,0) 55%);box-shadow:inset 0 1.5px 1px rgba(255,255,255,.7),inset 0 -2px 5px rgba(0,0,0,.18),0 6px 14px rgba(0,0,0,.3);transition:transform .15s}
+.ic:active i{transform:scale(.88)}
+#dock{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--sbb) + 16px);max-width:calc(100% - 16px);padding:10px 16px;border-radius:34px;display:flex;gap:min(2.4vw,18px);align-items:center;z-index:5}#dock .ic{font-size:0;gap:0}#dock .ic i{width:calc(var(--is)*.86);height:calc(var(--is)*.86)}@media(max-width:560px){#dock .ic:nth-child(n+5){display:none}}
+#ask{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--sbb) + 138px);padding:8px 22px;border-radius:30px;font-size:13px;z-index:5;cursor:pointer;color:#fff}
+#wins{position:absolute;inset:0;z-index:50;pointer-events:none}
+.win{position:absolute;inset:0;pointer-events:auto;display:flex;flex-direction:column;overflow:hidden;background:linear-gradient(135deg,rgba(255,255,255,.18),rgba(255,255,255,.02) 55%),var(--wb);animation:pop .3s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes pop{from{opacity:0;transform:scale(.88)}}
+.win.mn{display:none}
+.tbar{display:none;align-items:center;gap:14px;padding:10px 14px;cursor:move;font-weight:600;touch-action:none}
+.dots i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;cursor:pointer}
+.bd{flex:1;overflow:auto;padding:calc(var(--sb) + 40px) 16px 44px;position:relative;-webkit-user-select:text}
+.bd.fr{padding:calc(var(--sb) + 34px) 0 0;display:flex;flex-direction:column;overflow:hidden}
+.bd.ch{display:flex;flex-direction:column}
+body.desk .win{inset:auto;left:var(--x);top:var(--y);width:min(760px,72vw);height:min(500px,64vh);border-radius:22px}
+body.desk .win.mx{left:0;top:34px;width:100%;height:calc(100% - 104px);border-radius:0}
+body.desk .tbar{display:flex}
+body.desk .bd{padding:6px 16px 16px}
+body.desk .bd.fr{padding:0}
+body.desk #ig{grid-template-columns:repeat(auto-fill,88px);gap:14px 6px;justify-content:start}body.desk #home{padding:48px 18px 90px}body.desk #wg{display:none}
+body.desk .ic i{width:50px;height:50px;font-size:25px}
+body.desk #dock,body.desk #ask,body.desk #pill{display:none}
+#tb{display:none;position:absolute;left:50%;transform:translateX(-50%);bottom:12px;height:52px;padding:0 12px;border-radius:28px;align-items:center;gap:8px;z-index:800}
+body.desk #tb{display:flex}
+#tb button{background:none;border:0;font-size:22px;border-radius:12px;padding:4px 8px}
+#tb button.act{background:rgba(255,255,255,.25)}
+#tbc{font-size:13px;font-weight:600;margin-left:8px}
+#lnch{display:none;position:absolute;left:50%;transform:translateX(-50%);bottom:76px;width:min(520px,94vw);max-height:60%;overflow:auto;border-radius:30px;padding:20px;grid-template-columns:repeat(4,1fr);gap:16px;z-index:790}
+#lnch.on{display:grid}
+#pill{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--sbb) + 6px);width:140px;height:22px;z-index:900;cursor:pointer}
+#pill::after{content:"";position:absolute;left:5px;right:5px;top:8px;height:5px;border-radius:3px;background:var(--fg);opacity:.65}
+#cc{display:none;position:absolute;left:12px;right:12px;top:calc(var(--sb) + 40px);z-index:950;border-radius:30px;padding:16px;grid-template-columns:repeat(4,1fr);gap:10px}
+#cc.on{display:grid}
+@media(min-width:700px){#cc{left:auto;width:340px}}
+#cc input{grid-column:1/-1}
+.tl{aspect-ratio:1;border-radius:22px;display:grid;place-items:center;font-size:24px;cursor:pointer;background:var(--el)}
+.tl.on{background:var(--ac)}
+#lock{position:absolute;inset:0;z-index:1000;display:flex;flex-direction:column;align-items:center;padding-top:calc(var(--sb) + 90px);background:rgba(0,0,0,.06);transition:transform .55s cubic-bezier(.7,0,.3,1);cursor:pointer;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.3)}
+#lock.up{transform:translateY(-105%)}
+#lt{font-size:min(34vh,30vw);font-weight:var(--lw);letter-spacing:-.03em;line-height:.95;transform:scaleY(1.18);transform-origin:top;margin-top:2vh;text-shadow:none;background:linear-gradient(180deg,rgba(255,255,255,.8),rgba(255,255,255,.18));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;-webkit-text-stroke:1.5px rgba(255,255,255,.5)}
+#ld{font-size:19px;font-weight:600;opacity:.9}
+#lock p{position:absolute;bottom:calc(var(--sbb) + 14px);width:230px;height:5px;border-radius:3px;background:rgba(255,255,255,.85)}
+h1{font-size:30px;font-weight:700;margin:4px 0 14px}
+h3{font-size:15px;margin-top:10px}
+.tx,small{color:var(--tx)}
+.row{display:flex;align-items:center;gap:12px;padding:11px 14px;margin-bottom:8px;border-radius:18px;background:var(--el);cursor:pointer}
+.row b{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--ac);font-weight:400;flex:none}
+.row span{flex:1}.row em{font-style:normal;color:var(--tx)}
+.btn{background:var(--ac);color:#fff;border:0;border-radius:20px;padding:8px 18px;font-weight:600}
+.in{width:100%;background:var(--el);border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:10px 14px;outline:0;margin-bottom:10px}
+.sw{width:48px;height:29px;border-radius:15px;background:var(--el);position:relative;transition:.25s;flex:none}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:25px;height:25px;border-radius:50%;background:#fff;transition:.25s;box-shadow:0 2px 4px rgba(0,0,0,.3)}
+.sw.on{background:#34c759}.sw.on::after{left:21px}
+.card{border-radius:22px;padding:14px;margin-bottom:12px}
+.card>*{margin-top:8px}
+.seg{display:flex;gap:6px}.seg button{flex:1;padding:8px;border:0;border-radius:12px;background:var(--el)}
+.sw2,.wps{display:flex;gap:10px;flex-wrap:wrap}
+.sw2 i,.wps i{width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.6);cursor:pointer}
+.wps i{border-radius:12px;width:60px;height:44px}
+input[type=range]{width:100%;accent-color:var(--ac)}
+.bk{color:var(--ac);font-weight:600;cursor:pointer;margin-bottom:6px}
+.kv{display:flex;justify-content:space-between;gap:14px;padding:9px 2px;border-bottom:1px solid var(--el);font-size:14px}
+.kv span:last-child{color:var(--tx);text-align:right;word-break:break-word}
+.ctr{text-align:center;padding-top:16px}.big{font-size:56px;font-weight:300}
+.pb{height:6px;border-radius:3px;background:var(--el);margin:16px auto;max-width:260px;overflow:hidden}
+.pb i{display:block;height:100%;width:0;background:var(--ac);transition:width .1s}
+.ms{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px}
+.bb{max-width:80%;padding:9px 14px;border-radius:20px;background:var(--el)}
+.bb.r{align-self:flex-end;background:var(--ac);color:#fff}
+.cr{display:flex;gap:8px;margin-top:10px;flex:none}.cr .in{margin:0;flex:1}
+.cd{font-size:54px;text-align:right;padding:24px 8px;min-height:110px;overflow:hidden;font-weight:300}
+.ck,.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.ck button{aspect-ratio:1.25;border:0;border-radius:50px;font-size:24px;background:var(--el)}
+.ck .op{background:#ff9f0a;color:#fff}
+.pad{grid-template-columns:repeat(3,1fr);max-width:300px;margin:0 auto 14px}
+.pad button{aspect-ratio:1.4;border:0;border-radius:40px;font-size:26px;background:var(--el)}
+.gg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.gg>*{aspect-ratio:1;object-fit:cover;border-radius:10px;width:100%}
+.bar{display:flex;gap:6px;padding:6px;margin:0 8px 6px;border-radius:22px;flex:none}
+.bar button{background:none;border:0;font-size:20px;padding:0 8px}
+.bar .in{margin:0;padding:6px 12px}
+#bv{flex:1;min-height:0;overflow:auto}
+#bv iframe,.bd.fr>iframe{width:100%;height:100%;border:0;background:#fff}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:10px}
+.tiles div{padding:20px;border-radius:18px;background:var(--el);text-align:center;cursor:pointer}
+.shot{position:absolute;bottom:50px;left:50%;transform:translateX(-50%);width:64px;height:64px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,.5)}
+#wg{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:26px}
+.wd{width:min(150px,27vw);height:min(150px,27vw);border-radius:26px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;color:#fff;cursor:pointer;overflow:hidden;background:linear-gradient(135deg,rgba(255,255,255,.3),rgba(255,255,255,.05) 60%),rgba(28,28,40,.4)}
+.wd.wide{width:min(314px,56vw);justify-content:flex-start;gap:6px}
+.wd b{font-size:min(54px,10vw);font-weight:300;line-height:1}
+.wd small{color:#ff453a;font-weight:700}.wd.wide small{color:#ffd60a}
+.wd p{font-size:14px;line-height:1.3;overflow:hidden;opacity:.92}
+.wd svg{width:100%;height:100%}
+.ring{width:min(84px,16vw);height:min(84px,16vw);border-radius:50%;background:conic-gradient(#ffd60a var(--p),rgba(255,255,255,.25) 0);display:grid;place-items:center;margin:auto}
+.ring span{width:78%;height:78%;border-radius:50%;background:rgba(30,30,40,.6);display:grid;place-items:center;font-size:14px;font-weight:600}
+#pg{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--sbb) + 112px);display:flex;gap:8px;z-index:5}
+#pg i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.45)}#pg i:first-child{background:#fff}
+body.desk #pg{display:none}
+#tm b{font-weight:700;margin-right:10px}#tm span{font-weight:500}
+#si{display:flex;align-items:center;gap:6px}
+.bt{display:inline-block;width:25px;height:12px;border:1.5px solid currentColor;border-radius:4px;padding:1px}.bt i{display:block;height:100%;background:currentColor;border-radius:2px}
+.wps i,.gg>div{background-size:cover!important;background-position:center!important}
+.ai{display:block;overflow:hidden;border-radius:var(--r)}
+.ai svg{width:100%;height:100%;display:block}
+.ic i{background-image:none;box-shadow:inset 0 0 0 .5px rgba(255,255,255,.18),0 3px 10px rgba(0,0,0,.3)}
+.ic{font-weight:500;text-shadow:0 1px 3px rgba(0,0,0,.4)}
+.row{background:none;border-radius:0;border-bottom:.5px solid var(--hl);padding:14px 2px;margin:0}
+.row .ai{width:46px;height:46px;flex:none}
+.tl{aspect-ratio:auto;height:52px;border-radius:16px;font-size:12px;font-weight:600}
+#tb button{padding:3px}#tb .ai{width:36px;height:36px}
+.wd{background:linear-gradient(135deg,rgba(255,255,255,.14),rgba(255,255,255,.02) 60%),rgba(24,24,30,.5);border-radius:24px}
+.win{background:var(--wb)}
+h1{font-size:28px;letter-spacing:-.02em;font-weight:700}
+#st{text-shadow:none}
+body:not(.light) #os::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.3);pointer-events:none}
+</style></head><body>
+<div id=os>
+<div id=st onclick="$('#cc').classList.toggle('on')"><span id=tm></span><span id=si></span></div>
+<div id=home></div><div id=pg><i></i><i></i><i></i></div>
+
+<div id=dock class=glass></div>
+<div id=lnch class=glass></div>
+<div id=wins></div>
+<div id=tb class=glass><button onclick="$('#lnch').classList.toggle('on')">▦</button><span id=tbw></span><span id=tbc></span></div>
+<div id=pill></div>
+<div id=cc class=glass></div>
+<div id=lock onclick="this.classList.add('up')"><div id=ld></div><div id=lt></div><p></p></div>
+</div><div id=dim></div>
+<script>
+const $=(s,r=document)=>r.querySelector(s),D=document,W={},PH=[];let z=10,SQ='',BAT='';
+let S={dark:1,wp:0,ac:'#0a84ff',blur:26,rad:22,cols:innerWidth>700?6:4,desk:0,inst:[],note:'',br:100,wifi:1,bt:1,hide:0,lw:600,v:'1.0'};
+try{Object.assign(S,JSON.parse(localStorage.oneos||'{}'))}catch(e){}
+const sv=()=>{try{localStorage.oneos=JSON.stringify(S)}catch(e){}};
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sk=(a,b,c)=>`url('data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient><linearGradient id="h" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c}" stop-opacity="0"/><stop offset=".5" stop-color="${c}" stop-opacity=".6"/><stop offset="1" stop-color="${c}" stop-opacity=".1"/></linearGradient><filter id="f"><feGaussianBlur stdDeviation="12"/></filter></defs><rect width="1600" height="1000" fill="url(#g)"/><g filter="url(#f)"><path d="M-100 760C250 420 520 980 880 620S1420 60 1700 240V470C1400 300 1120 840 820 840S220 640-100 960Z" fill="url(#h)"/><path d="M300-50C500 300 900 120 1100 420S1500 700 1700 560V900C1450 960 1200 640 1000 560S500 400 300-50Z" fill="url(#h)" opacity=".55"/></g></svg>`)}')`;
+const WP=[sk('#1d3f7a','#040816','#6b9bff'),sk('#303650','#07080d','#a3acd1'),sk('#43206d','#0a0414','#c98bff'),sk('#f3ead9','#5d6288','#fff7e8')];
+const AC=['#0a84ff','#bf5af2','#ff375f','#30d158','#ff9f0a'];
+const A={phone:{n:'Phone',i:'📞',c:'#34c759',r:phone},msg:{n:'Messages',i:'💬',c:'#30d158',r:msg},web:{n:'Browser',i:'🌐',c:'#0a84ff',r:web},cam:{n:'Camera',i:'📷',c:'#48484a',r:cam},
+gal:{n:'Gallery',i:'🖼️',c:'#ff9f0a',r:gal},clk:{n:'Clock',i:'⏰',c:'#2c2c2e',r:clk},calc:{n:'Calculator',i:'🧮',c:'#ff9500',r:calc},note:{n:'Notes',i:'📝',c:'#ffd60a',r:note},
+store:{n:'Play Store',i:'▶️',c:'#f2f2f7',r:store},good:{n:'Good Lock',i:'🔒',c:'#bf5af2',r:good},ai:{n:'OneAI',i:'✨',c:'#5e5ce6',r:ai},set:{n:'Settings',i:'⚙️',c:'#8e8e93',r:set}};
+const C={wiki:{n:'Wikipedia',i:'📚',c:'#f2f2f7',d:'Free encyclopedia',u:'https://en.m.wikipedia.org'},
+maps:{n:'Maps',i:'🗺️',c:'#34c759',d:'OpenStreetMap',u:'https://www.openstreetmap.org/export/embed.html?bbox=-0.2%2C51.48%2C0.0%2C51.54&layer=mapnik'},
+g2048:{n:'2048',i:'🔢',c:'#edc22e',d:'Number puzzle game',u:'https://play2048.co/'},
+draw:{n:'Excalidraw',i:'✏️',c:'#6965db',d:'Whiteboard sketching',u:'https://excalidraw.com'}};
+Object.values(C).forEach(a=>a.r=e=>frame(e,a.u));
+const KW={phone:'phone|call|dial',msg:'message|text',web:'browser|browse|internet|\\bweb\\b',cam:'camera',gal:'gallery|photo',clk:'clock|alarm|stopwatch',calc:'calc',note:'note',store:'store|\\bapps?\\b',good:'good ?lock',ai:'oneai|assistant',set:'setting'};
+const APPS=()=>{const o={...A};S.inst.forEach(k=>C[k]&&(o[k]=C[k]));return o};
+const gr=(a,b)=>`linear-gradient(${a},${b})`,P=(d,f='#fff')=>`<path d="${d}" fill="${f}"/>`;
+const pet=['#ff9f0a','#ffd60a','#30d158','#64d2ff','#0a84ff','#bf5af2','#ff375f','#ff6b4a'].map((c,i)=>`<ellipse cx="30" cy="19.5" rx="6.5" ry="10.5" fill="${c}" opacity=".9" transform="rotate(${i*45} 30 30)" style="mix-blend-mode:multiply"/>`).join('');
+const keys=[...Array(12)].map((_,i)=>`<rect x="${12+i%4*9.5}" y="${27+(i/4|0)*9.5}" width="7.5" height="7.5" rx="2" fill="${i%4==3?'#ff9f0a':'#6b6b70'}"/>`).join('');
+const tk=[...Array(12)].map((_,i)=>`<line x1="30" y1="12.5" x2="30" y2="${i%3?14.5:15.5}" stroke="#222" stroke-width="1.2" transform="rotate(${i*30} 30 30)"/>`).join('');
+const G={
+phone:[gr('#6df07e','#17b936'),P('M19 13c2-2 5-1 6 1l3 6c1 2 0 4-2 5l-2 1c2 4 5 7 9 9l1-2c1-2 3-3 5-2l6 3c2 1 3 4 1 6-3 4-8 5-14 2C22 39 14 31 12 22c-1-5 1-8 4-9z')],
+msg:[gr('#6df07e','#17b936'),'<ellipse cx="30" cy="29" rx="21" ry="15" fill="#fff"/>'+P('M14 40c0 4-2 7-5 9 5 0 9-2 12-5z')],
+web:[gr('#35c4ff','#0a6df0'),'<circle cx="30" cy="30" r="21" fill="none" stroke="#fff" stroke-width="2.5"/>'+P('M41 19L33 33 27 27z','#ff453a')+P('M19 41L27 27 33 33z')],
+cam:[gr('#e6e7ec','#9b9ca5'),'<rect x="10" y="19" width="40" height="26" rx="5" fill="#2b2b2e"/>'+P('M22 19l3-5h10l3 5z','#2b2b2e')+'<circle cx="30" cy="32" r="8.5" fill="#e6e7ec"/><circle cx="30" cy="32" r="5.5" fill="#2b2b2e"/>'],
+gal:['#fff',pet],
+clk:['#000','<circle cx="30" cy="30" r="22" fill="#fff"/>'+tk+'<path d="M30 17v13l9 5" stroke="#111" stroke-width="2.6" stroke-linecap="round" fill="none"/><circle cx="30" cy="30" r="2" fill="#ff9f0a"/>'],
+calc:[gr('#4a4a4d','#1c1c1e'),'<rect x="12" y="11" width="36" height="12" rx="3" fill="#2c2c2e"/>'+keys],
+note:[gr('#fff','#f1f1f4'),'<rect width="60" height="17" fill="#ffd60a"/><path d="M10 29h40M10 38h40M10 47h40" stroke="#d6d6db" stroke-width="1.6"/>'],
+store:[gr('#2bd0ff','#1769f2'),'<path d="M30 14L18 43M30 14l12 29M21 35h18" stroke="#fff" stroke-width="4.6" stroke-linecap="round" fill="none"/>'],
+good:[gr('#c56bff','#6a3ad6'),'<rect x="16" y="28" width="28" height="20" rx="5" fill="#fff"/><path d="M22 28v-5a8 8 0 0 1 16 0v5" fill="none" stroke="#fff" stroke-width="4.6"/>'],
+ai:['linear-gradient(145deg,#5e5ce6,#b158f5 60%,#ff6fa5)',P('M30 10c1.2 10 5 14 15 16-10 2-13.8 6-15 16-1.2-10-5-14-15-16 10-2 13.8-6 15-16z')+P('M45 40c.5 4 2 5.5 6 6-4 .5-5.5 2-6 6-.5-4-2-5.5-6-6 4-.5 5.5-2 6-6z')],
+set:[gr('#d1d1d6','#8a8a91'),'<circle cx="30" cy="30" r="19" fill="none" stroke="#3a3a3c" stroke-width="6" stroke-dasharray="5 4.95"/><circle cx="30" cy="30" r="14" fill="#3a3a3c"/><circle cx="30" cy="30" r="6" fill="#b4b4ba"/>'],
+wiki:['#fff','<text x="30" y="43" text-anchor="middle" font-size="34" font-family="Georgia,serif" fill="#111">W</text>'],
+maps:[gr('#7ae07a','#2fa84f'),P('M30 11c-8 0-13 6-13 13 0 9 13 25 13 25s13-16 13-25c0-7-5-13-13-13z')+'<circle cx="30" cy="24" r="5" fill="#2fa84f"/>'],
+g2048:[gr('#f6d365','#f2a33a'),'<text x="30" y="37" text-anchor="middle" font-size="18" font-weight="800" font-family="Arial,sans-serif" fill="#fff">2048</text>'],
+draw:[gr('#8b86ff','#5b4fe0'),P('M16 44l3-10 18-18 7 7-18 18z')]};
+const IC=k=>{const g=G[k]||['#8e8e93',''];return`<i class=ai style="background:${g[0]}"><svg viewBox="0 0 60 60">${g[1]}</svg></i>`};
+const ico=(k,a)=>`<div class=ic onclick="run('${k}');lc()">${IC(k)}${a.n}</div>`;
+const lc=()=>$('#lnch').classList.remove('on');
+function hm(){const o=APPS(),dk=['msg','web','phone','ai','cam','note','store','set'],d=new Date(),p=parseInt(BAT)||100;
+$('#home').innerHTML=`<div id=wg><div class="wd glass" style="padding:8px"><svg viewBox="-50 -50 100 100"><circle r="48" fill="#fff"/><circle r="41" fill="none" stroke="#333" stroke-width="5" stroke-dasharray="1.1 20.37" stroke-dashoffset=".55"/><g stroke="#111" stroke-linecap="round"><line id="c1" y2="-22" stroke-width="4"/><line id="c2" y2="-34" stroke-width="3"/><line id="c3" y2="-38" stroke="#ff9500" stroke-width="1.5"/></g></svg></div><div class="wd glass" onclick="run('clk')"><small>${d.toLocaleDateString([],{weekday:'long'}).toUpperCase()}</small><b>${d.getDate()}</b><span>${d.toLocaleDateString([],{month:'long'})}</span></div><div class="wd glass"><div class=ring style="--p:${p}%"><span>${p}%</span></div></div><div class="wd wide glass" onclick="run('note')"><small>Notes</small><p>${esc((S.note||'Tap to write a note.').slice(0,150))}</p></div></div><div id=ig>${Object.keys(o).filter(k=>S.desk||!dk.includes(k)).map(k=>ico(k,o[k])).join('')}</div>`;
+$('#dock').innerHTML=dk.map(k=>ico(k,o[k])).join('');$('#lnch').innerHTML=Object.keys(o).map(k=>ico(k,o[k])).join('');tick()}
+function ap(){const r=D.documentElement.style;r.setProperty('--ac',S.ac);r.setProperty('--b',S.blur+'px');r.setProperty('--r',S.rad+'%');r.setProperty('--cols',S.cols);r.setProperty('--lw',S.lw);
+const b=D.body.classList;b.toggle('light',!S.dark);b.toggle('desk',!!S.desk);b.toggle('hide',!!S.hide);
+{const o=$('#os').style;o.backgroundImage=WP[S.wp];o.backgroundSize='cover';o.backgroundPosition='center'}$('#dim').style.opacity=(100-S.br)/140;
+$('#si').innerHTML=(S.wifi?'<svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1.5 4.4Q8-1.4 14.5 4.4M3.9 7Q8 3.5 12.1 7M6.3 9.6Q8 8.2 9.7 9.6"/></svg>':'')+'<span>'+BAT+'</span><span class=bt><i style="width:'+(parseInt(BAT)||100)+'%"></i></span>';
+D.querySelectorAll('#cc .tl[data-k]').forEach(t=>t.classList.toggle('on',!!S[t.dataset.k]));hm()}
+const tg=(k,el)=>{S[k]=+!S[k];el&&el.classList.toggle('on');sv();ap()};
+function run(id,arg){const a=APPS()[id];if(!a)return;let w=W[id];
+if(w){fo(id);arg!==undefined&&(w.nav?w.nav(arg):w.go&&w.go(arg));return}
+w=D.createElement('div');w.className='win glass';const n=Object.keys(W).length;w.style.setProperty('--x',70+n*28+'px');w.style.setProperty('--y',56+n*28+'px');
+w.innerHTML=`<div class=tbar><span class=dots><i style=background:#ff5f57 onclick="cls('${id}')"></i><i style=background:#febc2e onclick="mn('${id}')"></i><i style=background:#28c840 onclick="mx('${id}')"></i></span><b>${a.n}</b></div><div class=bd></div>`;
+$('#wins').append(w);W[id]=w;fo(id);
+const t=w.firstChild;t.onpointerdown=v=>{if(!S.desk||v.target.tagName=='I')return;const ox=v.clientX-parseFloat(w.style.getPropertyValue('--x')),oy=v.clientY-parseFloat(w.style.getPropertyValue('--y'));t.setPointerCapture(v.pointerId);t.onpointermove=m=>{w.style.setProperty('--x',m.clientX-ox+'px');w.style.setProperty('--y',Math.max(30,m.clientY-oy)+'px')};t.onpointerup=()=>t.onpointermove=null};
+w.onpointerdown=()=>fo(id);a.r(w.lastChild,arg)}
+function fo(k){const w=W[k];w.classList.remove('mn');w.style.zIndex=++z;tbr()}
+const cls=k=>{const w=W[k];w.stop&&w.stop();w.remove();delete W[k];tbr()};
+const mn=k=>{W[k].classList.add('mn');tbr()};
+const mx=k=>W[k].classList.toggle('mx');
+const tt=k=>{const w=W[k];w.classList.contains('mn')||+w.style.zIndex<z?fo(k):mn(k)};
+function tbr(){$('#tbw').innerHTML=Object.keys(W).map(k=>`<button class="${W[k].classList.contains('mn')?'':'act'}" onclick="tt('${k}')">${IC(k)}</button>`).join('')}
+$('#pill').onclick=()=>{const k=Object.keys(W).filter(k=>!W[k].classList.contains('mn')).sort((a,b)=>W[b].style.zIndex-W[a].style.zIndex)[0];k&&cls(k)};
+const R=(i,l,r='',a='')=>`<div class=row onclick="${a}"><span>${l}</span><em>${r}</em></div>`;
+const sw=k=>`<i class="sw ${S[k]?'on':''}" onclick="tg('${k}',this)"></i>`;
+const rng=(k,a,b,s=1)=>`<input type=range min=${a} max=${b} step=${s} value=${S[k]} oninput="S.${k}=+this.value;sv();ap()">`;
+const wps=()=>`<div class=wps>${WP.map((w,i)=>`<i style="background:${w}" onclick="S.wp=${i};sv();ap()"></i>`).join('')}</div>`;
+const acs=()=>`<div class=sw2>${AC.map(c=>`<i style="background:${c}" onclick="S.ac='${c}';sv();ap()"></i>`).join('')}</div>`;
+function set(e,pg=''){e.parentNode.nav=p=>set(e,p);let h;const bk=`<div class=bk onclick="W.set.nav('')">‹ Settings</div>`;
+if(pg=='disp')h=bk+`<h1>Display</h1>`+R('🌗','Dark mode',sw('dark'))+`<div class="card glass"><h3>Brightness</h3>${rng('br',10,100)}<h3>Liquid glass blur</h3>${rng('blur',4,60)}<h3>Icon roundness</h3>${rng('rad',10,29)}</div>`;
+else if(pg=='sty')h=bk+`<h1>Wallpaper & style</h1><div class="card glass"><h3>Wallpaper</h3>${wps()}<h3>Accent</h3>${acs()}</div>`;
+else if(pg=='upd')h=bk+`<h1>Software update</h1><div class=ctr><div class=big>⬆️</div><h2>OneOS ${S.v}</h2><p class=tx id=um>Tap to check for updates</p><div class=pb><i id=pi></i></div><button class=btn id=ub onclick="chk()">Check for updates</button></div>`;
+else if(pg=='abt'){h=bk+`<h1>About phone</h1><div class="card glass" id=spc>Reading hardware…</div>`;specs().then(r=>{const c=$('#spc');c&&(c.innerHTML=r.map(([a,b])=>`<div class=kv><span>${a}</span><span>${esc(String(b))}</span></div>`).join(''))})}
+else h=`<h1>Settings</h1>`+R('📶','Wi-Fi',sw('wifi'))+R('🔵','Bluetooth',sw('bt'))+R('🖥️','OneDesk · desktop mode',sw('desk'))+R('🌗','Display & glass','›',"W.set.nav('disp')")+R('🎨','Wallpaper & style','›',"W.set.nav('sty')")+R('🔒','Good Lock','›',"run('good')")+R('⬆️','Software update','v'+S.v,"W.set.nav('upd')")+R('ℹ️','About phone · System specs','›',"W.set.nav('abt')");
+e.innerHTML=h}
+function chk(){const V=['1.0','1.1','1.2','2.0'],n=V[V.indexOf(S.v)+1],m=$('#um'),b=$('#ub'),p=$('#pi');
+if(b.dataset.s=='r'){S.v=n;sv();location.reload();return}
+if(b.dataset.s=='d')return;m.textContent='Checking for updates…';
+setTimeout(()=>{if(!n){m.textContent='Your software is up to date.';return}
+m.innerHTML='OneOS '+n+' is available<br><small>Fresh liquid glass, faster OneDesk and new Good Lock modules.</small>';b.textContent='Download & install';
+b.onclick=()=>{b.dataset.s='d';b.textContent='Installing…';let x=0;const t=setInterval(()=>{p.style.width=(x+=4)+'%';if(x>=100){clearInterval(t);b.dataset.s='r';b.textContent='Restart now';b.onclick=chk}},100)}},900)}
+async function specs(){const n=navigator,c=n.connection||{};let gpu='n/a',bat='n/a',st='n/a';
+try{const g=D.createElement('canvas').getContext('webgl'),x=g.getExtension('WEBGL_debug_renderer_info');gpu=g.getParameter(x.UNMASKED_RENDERER_WEBGL)}catch(e){}
+try{const b=await n.getBattery();bat=Math.round(b.level*100)+'%'+(b.charging?' (charging)':'')}catch(e){}
+try{const s=await n.storage.estimate();st=(s.usage/1e6|0)+' MB used of '+(s.quota/1e9).toFixed(1)+' GB'}catch(e){}
+return[['Device','OneOS Phone'],['OneOS version',S.v],['Design','One UI 7 × Liquid Glass'],['Processor',(n.hardwareConcurrency||'?')+' cores'],['Memory',(n.deviceMemory||'?')+' GB (approx.)'],['GPU',gpu],['Display',screen.width+' × '+screen.height+' @ '+devicePixelRatio+'x'],['Battery',bat],['Storage',st],['Network',c.effectiveType||(n.onLine?'online':'offline')],['Platform',n.platform||'?'],['Language',n.language],['WebView',n.userAgent.slice(0,90)]]}
+function good(e){const M=(t,s,b)=>`<div class="card glass"><h3>${t}</h3><small>${s}</small>${b}</div>`;
+e.innerHTML=`<h1>Good Lock</h1>`+M('Theme Park','Wallpaper and accent colour',wps()+acs())+M('Home Up','Grid columns and icon shape',`<div class=seg>${[4,5,6].map(n=>`<button onclick="S.cols=${n};sv();ap()">${n} columns</button>`).join('')}</div>${rng('rad',10,29)}`)+M('QuickStar','Status bar',`<div class=row style="margin:0"><span>Hide status icons</span>${sw('hide')}</div>`)+M('LockStar','Lock screen clock weight',rng('lw',100,800,100))+M('Glass Lab','Liquid glass blur',rng('blur',4,60))}
+function store(e){e.innerHTML=`<h1>Play Store</h1><input class=in placeholder="Search apps and games" oninput="SQ=this.value;sf()"><div id=sl></div>`;SQ='';sf()}
+function sf(){const l=$('#sl');if(!l)return;l.innerHTML=Object.entries(C).filter(([k,a])=>(a.n+a.d).toLowerCase().includes(SQ.toLowerCase())).map(([k,a])=>{const o=S.inst.includes(k);return`<div class=row>${IC(k)}<span>${a.n}<br><small>${a.d}</small></span><button class=btn onclick="${o?`run('${k}')`:`ins('${k}',this)`}">${o?'Open':'Install'}</button></div>`}).join('')}
+function ins(k,b){b.textContent='Installing…';setTimeout(()=>{S.inst.push(k);sv();hm();sf()},900)}
+function frame(e,u){e.classList.add('fr');e.innerHTML=`<iframe src="${u}"></iframe>`}
+function web(e,q){const w=e.parentNode;let H=[],i=-1;e.classList.add('fr');
+e.innerHTML=`<div class="bar glass"><button id=bb>‹</button><button id=bf>›</button><input id=bu class=in placeholder="Search or enter address"><button id=bx>↗</button></div><div id=bv></div>`;
+const v=$('#bv'),u=$('#bu'),home=()=>v.innerHTML=`<div class=tiles>${[['📚 Wikipedia','https://en.m.wikipedia.org'],['🗺️ OpenStreetMap','https://www.openstreetmap.org'],['🔎 Web search','https://www.google.com/search?igu=1&q=OneOS'],['📰 Example','https://example.com']].map(([n,l])=>`<div onclick="W.web.go('${l}')">${n}</div>`).join('')}</div>`;
+const go=(t,p=1)=>{t=t.trim();if(!t)return;const l=/^https?:\/\//.test(t)?t:/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(t)?'https://'+t:'https://www.google.com/search?igu=1&q='+encodeURIComponent(t);if(p){H=H.slice(0,i+1);H.push(l);i++}u.value=l;v.innerHTML=`<iframe src="${esc(l)}"></iframe>`};
+w.go=go;$('#bb').onclick=()=>i>0?go(H[--i],0):(i=-1,H=[],u.value='',home());$('#bf').onclick=()=>i<H.length-1&&go(H[++i],0);$('#bx').onclick=()=>window.open(u.value||'https://example.com','_blank');u.onkeydown=k=>k.key=='Enter'&&go(u.value);q?go(q):home()}
+function ai(e){e.classList.add('ch');e.innerHTML=`<h1>OneAI</h1><div id=am class=ms></div><div class=cr><input id=aq class=in placeholder="Ask OneAI to navigate…"><button class=btn>Go</button></div>`;
+const m=$('#am'),add=(t,c)=>{m.innerHTML+=`<div class="bb ${c}">${esc(t)}</div>`;m.scrollTop=1e6},go=()=>{const i=$('#aq'),q=i.value;if(!q)return;i.value='';add(q,'r');setTimeout(()=>add(brain(q),'l'),350)};
+add('Hi, I’m OneAI. I can open apps, change settings, search the web and check for updates. Say “help” for ideas.','l');e.querySelector('.cr button').onclick=go;$('#aq').onkeydown=k=>k.key=='Enter'&&go()}
+function brain(q){const t=q.toLowerCase().trim();let m;
+if(/^(help|\?|what can you)/.test(t))return'Try: “open Settings”, “turn on OneDesk”, “dark mode”, “brightness 60”, “search cats”, “check for updates”, “system specs”, “change wallpaper”, “wifi off”.';
+if(/updat/.test(t)){run('set','upd');return'Opening Software update.'}
+if(/spec|about phone|cpu|\bram\b|gpu/.test(t)){run('set','abt');return'Here are your system specs.'}
+if(/desk|dex/.test(t)){S.desk=/off|exit|disable/.test(t)?0:1;sv();ap();return'OneDesk '+(S.desk?'on — windows are movable and there is a taskbar.':'off.')}
+if(/dark|light/.test(t)){S.dark=/light/.test(t)?0:1;sv();ap();return(S.dark?'Dark':'Light')+' mode on.'}
+if(m=t.match(/brightness\D*(\d+)/)){S.br=Math.min(100,Math.max(10,+m[1]));sv();ap();return'Brightness set to '+S.br+'%.'}
+if(m=t.match(/wi-?fi|bluetooth/)){const k=m[0]=='bluetooth'?'bt':'wifi';S[k]=/off|disable/.test(t)?0:1;sv();ap();return m[0]+' turned '+(S[k]?'on':'off')+'.'}
+if(/wallpaper/.test(t)){S.wp=(S.wp+1)%WP.length;sv();ap();return'Wallpaper changed.'}
+if(/what.*(time|date)|^(time|date)/.test(t))return new Date().toLocaleString();
+if(m=t.match(/^(?:search|google|look up|find)\s+(?:for\s+)?(.+)/)){run('web',m[1]);return'Searching “'+m[1]+'” in Browser.'}
+const o=APPS(),k=Object.keys(o).find(k=>new RegExp(KW[k]||o[k].n.toLowerCase()).test(t));
+if(k){run(k);return'Opening '+o[k].n+'.'}
+return'I can move you around OneOS — try “open Play Store”, or say “help”.'}
+function phone(e){let n='';e.innerHTML=`<h1 id=pn style="text-align:center;min-height:44px"></h1><div class=pad>${'123456789*0#'.split('').map(k=>`<button>${k}</button>`).join('')}</div><div class=ctr style="padding:0"><button class=btn id=cl>📞 Call</button></div>`;
+e.querySelectorAll('.pad button').forEach(b=>b.onclick=()=>{n+=b.textContent;$('#pn').textContent=n});$('#cl').onclick=()=>{if(n)location.href='tel:'+n}}
+function msg(e){e.classList.add('ch');e.innerHTML=`<h1>Messages</h1><div id=ms class=ms><div class="bb">Hey! Welcome to OneOS 👋</div></div><div class=cr><input id=mi class=in placeholder="Message"><button class=btn>Send</button></div>`;
+const s=()=>{const i=$('#mi'),m=$('#ms');if(!i.value)return;m.innerHTML+=`<div class="bb r">${esc(i.value)}</div>`;i.value='';m.scrollTop=1e6;setTimeout(()=>{m.innerHTML+='<div class=bb>Got it ✨</div>';m.scrollTop=1e6},600)};e.querySelector('.cr button').onclick=s;$('#mi').onkeydown=k=>k.key=='Enter'&&s()}
+function cam(e){e.classList.add('fr');e.innerHTML=`<video autoplay playsinline muted style="flex:1;min-height:0;width:100%;object-fit:cover;background:#000"></video><button class=shot onclick="snap()"></button>`;
+navigator.mediaDevices&&navigator.mediaDevices.getUserMedia({video:true}).then(s=>{$('video',e).srcObject=s;e.parentNode.stop=()=>s.getTracks().forEach(t=>t.stop())}).catch(()=>e.insertAdjacentHTML('afterbegin','<p class=tx style="padding:20px;position:absolute">Camera unavailable. Allow camera access and try again.</p>'))}
+function snap(){const v=$('video'),c=D.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);PH.push(c.toDataURL('image/jpeg',.7))}
+function gal(e){e.innerHTML=`<h1>Gallery</h1><div class=gg>${PH.map(p=>`<img src="${p}">`).join('')+WP.map(w=>`<div style="background:${w}"></div>`).join('')}</div>`}
+function clk(e){e.innerHTML=`<h1>Clock</h1><div class=ctr><div id=ck class=big></div><p class=tx id=cdt></p><div id=sq class=big style="font-size:44px;margin-top:30px">00:00.0</div><button class=btn id=ss>Start</button></div>`;
+let t0=0,on=0,el=0;const f=ms=>{const s=ms/1e3;return String(s/60|0).padStart(2,'0')+':'+(s%60).toFixed(1).padStart(4,'0')};
+const iv=setInterval(()=>{const c=$('#ck');if(!c)return clearInterval(iv);c.textContent=new Date().toLocaleTimeString();$('#cdt').textContent=new Date().toDateString();if(on)$('#sq').textContent=f(el+Date.now()-t0)},100);
+$('#ss').onclick=function(){if(on){el+=Date.now()-t0;on=0;this.textContent='Start'}else{t0=Date.now();on=1;this.textContent='Stop'}}}
+function calc(e){let x='';e.innerHTML=`<div id=cd class=cd>0</div><div class=ck>${['C','⌫','%','÷',7,8,9,'×',4,5,6,'−',1,2,3,'+','00',0,'.','='].map(k=>`<button class="${/[÷×−+=]/.test(k)?'op':''}">${k}</button>`).join('')}</div>`;
+e.querySelectorAll('.ck button').forEach(b=>b.onclick=()=>{const k=b.textContent;if(x=='Error')x='';
+if(k=='C')x='';else if(k=='⌫')x=x.slice(0,-1);else if(k=='='){try{const v=x.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-').replace(/%/g,'/100');if(/^[\d+\-*/.() ]+$/.test(v))x=String(+Function('return '+v)().toFixed(8))}catch(_){x='Error'}}else x+=k;$('#cd').textContent=x||'0'})}
+function note(e){e.innerHTML=`<h1>Notes</h1><textarea class=in style="height:60%;resize:none" placeholder="Start typing…">${esc(S.note)}</textarea>`;$('textarea',e).oninput=function(){S.note=this.value;sv()}}
+$('#cc').innerHTML=[['wifi','Wi-Fi'],['bt','Bluetooth'],['dark','Dark'],['desk','OneDesk']].map(([k,t])=>`<div class=tl data-k=${k} onclick="tg('${k}')">${t}</div>`).join('')+[['Lock',"$('#lock').classList.remove('up')"],['Settings',"run('set')"],['OneAI',"run('ai')"],['Update',"run('set','upd')"]].map(([t,a])=>`<div class=tl onclick="${a};$('#cc').classList.remove('on')">${t}</div>`).join('')+`<input type=range min=10 max=100 value=${S.br} oninput="S.br=+this.value;sv();ap()">`;
+D.onclick=v=>{if(!v.target.closest('#cc,#st'))$('#cc').classList.remove('on');if(!v.target.closest('#lnch,#tb'))lc()};
+function tick(){const d=new Date(),o={hour:'numeric',minute:'2-digit'};$('#tm').innerHTML='<b>'+d.toLocaleTimeString([],o).replace(/ ?[AP]M/i,'')+'</b><span>'+d.toLocaleDateString([],{weekday:'short',day:'numeric',month:'short'})+'</span>';$('#lt').textContent=d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});$('#ld').textContent=d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});$('#tbc').textContent=d.toLocaleTimeString([],o);[['#c1',d.getHours()%12*30+d.getMinutes()/2],['#c2',d.getMinutes()*6],['#c3',d.getSeconds()*6]].forEach(([q,a])=>{const n=$(q);n&&n.setAttribute('transform','rotate('+a+')')})}
+try{navigator.getBattery().then(b=>{BAT=Math.round(b.level*100)+'%';ap()})}catch(e){}
+ap();tick();setInterval(tick,1000);
+</script></body></html>
