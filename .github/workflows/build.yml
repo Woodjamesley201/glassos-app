@@ -1,203 +1,918 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>OneOS</title>
-    <link rel="stylesheet" href="css/oneos.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#05060a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>OneOS</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+:root{
+--accent:#5b8cff;--accent2:#a06bff;--bg:#05060a;--txt:#f3f5f9;--dim:#98a1b2;
+--gb:rgba(255,255,255,.16);--glassbg:linear-gradient(155deg,rgba(255,255,255,.13),rgba(255,255,255,.035));
+--r:24px;--isq:22px;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
+font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",Roboto,system-ui,sans-serif;
+-webkit-font-smoothing:antialiased;user-select:none;font-size:15px}
+#root{position:relative;height:100dvh;min-height:740px;max-height:1400px;overflow:hidden;isolation:isolate}
+#wall{position:absolute;inset:0;z-index:0;background:
+radial-gradient(120% 90% at 12% 6%,color-mix(in srgb,var(--accent) 34%,transparent),transparent 60%),
+radial-gradient(110% 80% at 88% 22%,color-mix(in srgb,var(--accent2) 30%,transparent),transparent 62%),
+radial-gradient(90% 70% at 50% 108%,#1b2333,transparent 70%),
+linear-gradient(170deg,#070810,#0a0c16 45%,#05060a)}
+#wall::after{content:"";position:absolute;inset:-30%;background:
+radial-gradient(35% 30% at 30% 40%,rgba(255,255,255,.09),transparent 70%),
+radial-gradient(30% 26% at 72% 62%,rgba(255,255,255,.06),transparent 70%);
+filter:blur(20px);animation:drift 26s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translate3d(4%,-4%,0) scale(1.08) rotate(4deg)}}
+.scrim{position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.1) 30%,rgba(0,0,0,.45))}
+#stage{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column}
+
+.glass{position:relative;background:var(--glassbg);backdrop-filter:blur(28px) saturate(190%);-webkit-backdrop-filter:blur(28px) saturate(190%);
+border:1px solid var(--gb);box-shadow:0 14px 44px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.26);border-radius:var(--r);overflow:hidden}
+.glass::before{content:"";position:absolute;inset:0;pointer-events:none;
+background:linear-gradient(118deg,transparent 26%,rgba(255,255,255,.14) 42%,rgba(255,255,255,.03) 54%,transparent 74%)}
+.glass::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+box-shadow:inset 0 -1px 0 rgba(255,255,255,.10),inset 0 0 22px rgba(255,255,255,.04)}
+
+#sb{position:absolute;top:0;left:0;right:0;height:46px;z-index:60;display:flex;align-items:center;justify-content:space-between;
+padding:0 20px;font-size:12.5px;font-weight:650;letter-spacing:.3px;color:#fff;cursor:pointer;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+#sb .r{display:flex;gap:7px;align-items:center;opacity:.95}
+#sb svg{width:15px;height:15px;stroke:#fff;fill:none;stroke-width:1.9}
+.batt{width:24px;height:12px;border:1.6px solid #fff;border-radius:4px;position:relative;padding:1.6px}
+.batt i{display:block;height:100%;width:86%;background:#fff;border-radius:2px}
+.batt::after{content:"";position:absolute;right:-3.4px;top:3.2px;width:2px;height:4px;background:#fff;border-radius:1px}
+
+#boot{position:absolute;inset:0;z-index:200;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px}
+#boot .logo{font-size:30px;font-weight:800;letter-spacing:-1px;background:linear-gradient(100deg,#fff,#9ab4ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+#boot .bar{width:130px;height:3px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden}
+#boot .bar i{display:block;height:100%;width:0;background:#fff;animation:fill 2.4s ease forwards}
+@keyframes fill{to{width:100%}}
+
+#setup{position:absolute;inset:0;z-index:150;display:flex;flex-direction:column;padding:56px 22px 30px;overflow:auto}
+.setuphead{display:flex;justify-content:center;margin-bottom:18px}
+.orb{width:66px;height:66px;border-radius:50%;background:conic-gradient(from 0deg,var(--accent),var(--accent2),#4be0c8,var(--accent));
+box-shadow:0 0 44px color-mix(in srgb,var(--accent) 60%,transparent);animation:spin 9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#setup h1{font-size:27px;font-weight:800;letter-spacing:-.9px;line-height:1.15;margin-bottom:8px}
+#setup p.sub{color:var(--dim);font-size:13.5px;line-height:1.55;margin-bottom:20px}
+.dots{display:flex;gap:6px;justify-content:center;margin:16px 0}
+.dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.22)}
+.dots i.on{background:#fff;width:16px;border-radius:3px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px;border-radius:16px;border:0;
+background:linear-gradient(140deg,var(--accent),var(--accent2));color:#fff;font-weight:700;font-size:15px;cursor:pointer;
+box-shadow:0 10px 30px color-mix(in srgb,var(--accent) 40%,transparent)}
+.btn.ghost{background:rgba(255,255,255,.08);border:1px solid var(--gb);box-shadow:none}
+.btn:active{transform:scale(.975)}
+.opt{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:16px;margin-bottom:9px;
+background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.09);cursor:pointer;font-size:14px}
+.opt.sel{background:color-mix(in srgb,var(--accent) 26%,transparent);border-color:color-mix(in srgb,var(--accent) 60%,transparent)}
+.opt .chk{margin-left:auto;width:18px;height:18px;border-radius:50%;border:1.6px solid rgba(255,255,255,.35)}
+.opt.sel .chk{background:#fff;border-color:#fff;box-shadow:inset 0 0 0 4px var(--accent)}
+input.field,textarea.field{width:100%;padding:15px 16px;border-radius:16px;border:1px solid var(--gb);background:rgba(255,255,255,.06);
+color:#fff;font-size:15px;font-family:inherit;outline:none}
+input.field:focus,textarea.field:focus{border-color:var(--accent)}
+.sw{width:48px;height:28px;border-radius:20px;background:rgba(255,255,255,.16);position:relative;flex:0 0 auto;transition:.2s;cursor:pointer}
+.sw i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.22s}
+.sw.on{background:linear-gradient(120deg,var(--accent),var(--accent2))}
+.sw.on i{left:23px}
+
+#lock{position:absolute;inset:0;z-index:120;display:flex;flex-direction:column;align-items:center;padding-top:74px;
+transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .4s}
+#lock.up{transform:translateY(-100%);opacity:0;pointer-events:none}
+#lock .time{font-size:96px;font-weight:250;letter-spacing:-6px;line-height:.95;font-variant-numeric:tabular-nums;
+background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(255,255,255,.55));-webkit-background-clip:text;background-clip:text;color:transparent}
+#lock .date{color:rgba(255,255,255,.8);font-size:14px;font-weight:600;margin-top:6px}
+.lockwidgets{display:flex;gap:10px;margin-top:26px}
+.lw{padding:10px 14px;border-radius:18px;font-size:11.5px;color:#fff;display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer}
+.lw svg{width:15px;height:15px;stroke:#fff;fill:none;stroke-width:1.8}
+.lockbottom{margin-top:auto;margin-bottom:26px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.pill{width:132px;height:5px;border-radius:5px;background:rgba(255,255,255,.85)}
+.hint{font-size:11.5px;color:rgba(255,255,255,.7);font-weight:600;letter-spacing:.3px}
+
+#home{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;padding:52px 16px 0;
+transition:transform .45s cubic-bezier(.2,.8,.2,1),opacity .3s,filter .3s}
+#home.away{transform:scale(.94);opacity:0;pointer-events:none;filter:blur(4px)}
+.wrow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.wcard{padding:14px;border-radius:22px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between}
+.wcard .big{font-size:26px;font-weight:750;letter-spacing:-1px}
+.wcard .lbl{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.7px;font-weight:700}
+.wcard.wide{grid-column:span 2}
+.pages{flex:1;overflow:hidden;position:relative;touch-action:pan-y}
+.page{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);gap:16px 6px;align-content:start;
+padding:4px 2px;overflow-y:auto;scrollbar-width:none;transition:opacity .3s}
+.page::-webkit-scrollbar{display:none}
+.page.off{opacity:0;pointer-events:none}
+.icon{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer}
+.icon .sq{width:58px;height:58px;border-radius:var(--isq);display:flex;align-items:center;justify-content:center;
+box-shadow:0 8px 22px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.3);position:relative;overflow:hidden;transition:transform .15s}
+.icon .sq::before{content:"";position:absolute;inset:0;background:linear-gradient(160deg,rgba(255,255,255,.34),transparent 52%)}
+.icon:active .sq{transform:scale(.9)}
+.icon .sq svg{width:28px;height:28px;stroke:#fff;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;position:relative;z-index:1}
+.icon .nm{font-size:10.5px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.6);text-align:center;max-width:66px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dotsrow{display:flex;gap:6px;justify-content:center;padding:8px 0}
+.dotsrow i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3)}
+.dotsrow i.on{background:#fff}
+#dock{margin:6px 0 14px;padding:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;border-radius:30px}
+#dock .icon .nm{display:none}
+#dock .icon .sq{width:52px;height:52px;margin:0 auto}
+
+#appLayer{position:absolute;inset:0;z-index:80;display:none}
+#appLayer.on{display:block}
+.app{position:absolute;inset:0;display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(9,11,17,.86),rgba(5,6,10,.96));
+backdrop-filter:blur(30px);animation:appin .32s cubic-bezier(.2,.9,.2,1)}
+@keyframes appin{from{opacity:0;transform:scale(.94) translateY(18px)}}
+.apphead{display:flex;align-items:center;gap:12px;padding:52px 16px 12px;border-bottom:1px solid rgba(255,255,255,.07)}
+.apphead .t{font-size:19px;font-weight:750;letter-spacing:-.4px}
+.apphead .back{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+background:rgba(255,255,255,.09);border:1px solid var(--gb);cursor:pointer}
+.apphead .back svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.2}
+.appbody{flex:1;overflow-y:auto;padding:16px 16px 90px;scrollbar-width:none}
+.appbody::-webkit-scrollbar{display:none}
+h2.sec{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin:20px 0 8px;font-weight:750}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:flex;align-items:center;gap:12px;padding:14px;border-radius:16px;background:rgba(255,255,255,.05);
+border:1px solid rgba(255,255,255,.07);font-size:14px;cursor:pointer}
+.item:active{background:rgba(255,255,255,.1)}
+.item .chev{margin-left:auto;color:var(--dim);font-size:17px}
+.item .ic{width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.item .ic svg{width:17px;height:17px;stroke:#fff;fill:none;stroke-width:1.8}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{padding:16px;border-radius:18px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08);font-size:13px;font-weight:600}
+.tile b{display:block;font-size:21px;margin-bottom:2px;letter-spacing:-.6px}
+.muted{color:var(--dim);font-size:12.5px;line-height:1.6}
+
+#nav{position:absolute;bottom:0;left:0;right:0;height:44px;z-index:95;display:none;align-items:center;justify-content:center;gap:56px}
+#nav.on{display:flex}
+#nav .nb{width:36px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.9}
+#nav svg{width:17px;height:17px;stroke:#fff;fill:none;stroke-width:2}
+#nav .homebar{width:120px;height:5px;border-radius:5px;background:rgba(255,255,255,.9);cursor:pointer}
+
+#cc{position:absolute;inset:0;z-index:110;background:rgba(4,5,9,.55);backdrop-filter:blur(24px);
+padding:60px 18px;display:none;flex-direction:column;gap:12px}
+#cc.on{display:flex;animation:appin .25s ease}
+.cctop{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.cctile{aspect-ratio:1;border-radius:22px;display:flex;flex-direction:column;justify-content:space-between;padding:14px;
+cursor:pointer;font-size:11.5px;font-weight:700}
+.cctile svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:1.8}
+.cctile.act{background:linear-gradient(150deg,var(--accent),var(--accent2))}
+.cctile.off2{background:rgba(255,255,255,.07);border:1px solid var(--gb)}
+.cctile.off2 svg{opacity:.55}
+.slider{height:46px;border-radius:23px;position:relative;overflow:hidden;display:flex;align-items:center;padding:0 16px;font-size:15px}
+.slider .fill{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.9)}
+.slider .lbl{position:relative;z-index:2;mix-blend-mode:difference;color:#fff;font-weight:700}
+.slider .lbl svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2}
+.slider input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer;z-index:3}
+.ccfoot{margin-top:auto;display:flex;justify-content:space-between;align-items:center}
+
+#recents{position:absolute;inset:0;z-index:105;background:rgba(4,5,9,.7);backdrop-filter:blur(20px);display:none;
+flex-direction:column;justify-content:center;padding:70px 20px}
+#recents.on{display:flex;animation:appin .25s ease}
+.rcard{width:100%;max-width:250px;aspect-ratio:3/4;border-radius:24px;margin:0 auto 18px;overflow:hidden;position:relative;
+background:linear-gradient(160deg,#1a2030,#0c0f16);border:1px solid var(--gb);box-shadow:0 20px 50px rgba(0,0,0,.6);cursor:pointer}
+.rcard .rt{position:absolute;top:0;left:0;right:0;padding:12px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px;
+background:linear-gradient(180deg,rgba(0,0,0,.6),transparent)}
+.rcard .rt i{width:22px;height:22px;border-radius:7px;display:block}
+
+#desk{position:absolute;inset:0;z-index:100;display:none;background:linear-gradient(160deg,#0a0d16,#060810 60%,#0b1018);overflow:hidden}
+#desk.on{display:block}
+#desk::before{content:"";position:absolute;inset:0;background:
+radial-gradient(60% 50% at 20% 10%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 70%),
+radial-gradient(50% 40% at 85% 80%,color-mix(in srgb,var(--accent2) 18%,transparent),transparent 70%)}
+#deskIcons{position:absolute;top:26px;left:26px;display:flex;flex-direction:column;gap:18px;z-index:2}
+#deskIcons .icon .nm{font-size:10px}
+#taskbar{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:10px;
+padding:9px 14px;border-radius:20px}
+#taskbar .tb{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+#taskbar .tb:hover{background:rgba(255,255,255,.12)}
+#taskbar .tb svg{width:19px;height:19px;stroke:#fff;fill:none;stroke-width:1.8}
+.win{position:absolute;width:min(430px,88%);border-radius:16px;overflow:hidden;background:rgba(12,15,22,.94);
+backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 70px rgba(0,0,0,.65);z-index:10;display:flex;flex-direction:column}
+.win .wbar{display:flex;align-items:center;gap:8px;padding:9px 10px;background:rgba(255,255,255,.06);cursor:grab;border-bottom:1px solid rgba(255,255,255,.08)}
+.win .wbar .wd{width:9px;height:9px;border-radius:50%}
+.win .wbar .wt{font-size:11.5px;font-weight:700;margin-left:2px;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.win .wbar .wb{width:18px;height:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.7;font-size:13px}
+.win .wbody{overflow:auto;padding:12px;font-size:13px;max-height:60vh}
+#startMenu{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);z-index:30;width:min(360px,90%);padding:14px;
+display:none;grid-template-columns:repeat(4,1fr);gap:12px;border-radius:22px}
+#startMenu.on{display:grid}
+
+.chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:20px;background:rgba(255,255,255,.08);
+border:1px solid var(--gb);font-size:11.5px;font-weight:650;cursor:pointer;margin:0 6px 6px 0}
+.chip.on{background:linear-gradient(120deg,var(--accent),var(--accent2))}
+.prog{height:6px;border-radius:6px;background:rgba(255,255,255,.13);overflow:hidden;margin:10px 0}
+.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s}
+.aiFab{position:absolute;right:16px;bottom:64px;z-index:90;width:52px;height:52px;border-radius:50%;display:none;align-items:center;
+justify-content:center;cursor:pointer;background:conic-gradient(from 40deg,var(--accent),var(--accent2),#4be0c8,var(--accent));
+box-shadow:0 10px 30px color-mix(in srgb,var(--accent) 55%,transparent)}
+.aiFab svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:1.9}
+.toast{position:absolute;left:50%;bottom:110px;transform:translateX(-50%) translateY(10px);z-index:190;padding:12px 18px;
+border-radius:16px;font-size:12.5px;font-weight:650;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap}
+.toast.on{opacity:1;transform:translateX(-50%)}
+.reboot{position:absolute;inset:0;z-index:300;background:#000;display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;color:#fff}
+.reboot.on{display:flex}
+.photo{aspect-ratio:1;border-radius:14px;overflow:hidden;position:relative;cursor:pointer}
+.msg{max-width:78%;padding:11px 14px;border-radius:18px;font-size:13.5px;line-height:1.5;margin-bottom:8px;animation:appin .2s}
+.msg.me{margin-left:auto;background:linear-gradient(130deg,var(--accent),var(--accent2));border-bottom-right-radius:6px}
+.msg.them{background:rgba(255,255,255,.09);border-bottom-left-radius:6px}
+.dim2{color:var(--dim)}
+.fade{animation:appin .3s ease}
+</style>
 </head>
 <body>
-    <!-- Lock Screen -->
-    <div id="lockScreen" class="lock-screen active">
-        <div class="lock-bg"></div>
-        <div class="lock-content">
-            <div class="lock-time">
-                <div class="time-large" id="lockTime">9:41</div>
-                <div class="date-large" id="lockDate">Tuesday, October 27</div>
-            </div>
-            <div class="lock-bottom">
-                <div class="lock-hint">Swipe up to unlock</div>
-                <div class="lock-indicators">
-                    <div class="indicator"></div>
-                </div>
-            </div>
-        </div>
+<div id="root">
+  <div id="wall"></div><div class="scrim"></div>
+  <div id="stage">
+    <div id="sb">
+      <span id="sbTime">9:41</span>
+      <span class="r">
+        <svg viewBox="0 0 24 24"><path d="M4 17h2M9 13v4M14 9v8M19 5v12"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0120 0M5 12a10 10 0 0114 0M8.5 15.5a5 5 0 017 0M12 19h.01"/></svg>
+        <span class="batt"><i></i></span>
+      </span>
     </div>
-
-    <!-- Home Screen -->
-    <div id="homeScreen" class="home-screen">
-        <div class="status-bar">
-            <div class="status-left">
-                <span id="carrier">OneOS</span>
-            </div>
-            <div class="status-right">
-                <span class="status-icon">📶</span>
-                <span class="status-icon">🔋</span>
-                <span id="statusTime">9:41</span>
-            </div>
-        </div>
-
-        <div class="home-content" id="homeContent">
-            <div class="widget-area">
-                <div class="widget glass">
-                    <div class="widget-header">
-                        <span>Weather</span>
-                        <span>Cupertino</span>
-                    </div>
-                    <div class="widget-body">
-                        <div class="weather-temp">72°</div>
-                        <div class="weather-desc">Partly Cloudy</div>
-                    </div>
-                </div>
-                <div class="widget glass">
-                    <div class="widget-header">
-                        <span>Calendar</span>
-                    </div>
-                    <div class="widget-body">
-                        <div class="calendar-event">
-                            <div class="event-time">10:00 AM</div>
-                            <div class="event-title">Team Meeting</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="app-grid" id="appGrid">
-                <!-- Apps will be generated by JS -->
-            </div>
-        </div>
-
-        <div class="dock-container">
-            <div class="dock glass">
-                <div class="dock-app" data-app="safari" title="Safari">
-                    <div class="app-icon safari-icon">🌐</div>
-                </div>
-                <div class="dock-app" data-app="mail" title="Mail">
-                    <div class="app-icon mail-icon">✉️</div>
-                </div>
-                <div class="dock-app" data-app="messages" title="Messages">
-                    <div class="app-icon messages-icon">💬</div>
-                </div>
-                <div class="dock-app" data-app="music" title="Music">
-                    <div class="app-icon music-icon">🎵</div>
-                </div>
-                <div class="dock-app" data-app="appstore" title="App Store">
-                    <div class="app-icon appstore-icon">🛍️</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="home-indicator" id="homeIndicator"></div>
+    <div id="appLayer"></div>
+    <div id="home"></div>
+    <div id="lock"></div>
+    <div id="cc"></div>
+    <div id="recents"></div>
+    <div id="desk"></div>
+    <div id="setup"></div>
+    <div id="nav">
+      <span class="nb" id="navBack"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></span>
+      <span class="homebar" id="navHome"></span>
+      <span class="nb" id="navRec"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/></svg></span>
     </div>
+    <div class="aiFab" id="aiFab"><svg viewBox="0 0 24 24"><path d="M12 3l2.2 5.4L20 10l-5.8 1.6L12 17l-2.2-5.4L4 10l5.8-1.6z"/></svg></div>
+    <div class="toast glass" id="toast"></div>
+    <div class="reboot" id="reboot"><div class="orb"></div><div style="font-size:13px;letter-spacing:.4px">Installing OneOS update…</div></div>
+  </div>
+</div>
+<script>
+"use strict";
+const KEY="oneos.v1";
+const DEF={setup:false,lang:"English (US)",wifi:null,name:"Alex",ai:true,dark:true,accent:"#5b8cff",accent2:"#a06bff",
+shape:"squircle",nav:"bar",ver:"1.0.0",installed:[],bright:78,vol:60,wifiOn:true,bt:false,dnd:false,page:0,
+theme:{clockFont:"thin"},notes:[{t:"Welcome to OneOS",b:"Everything you type in Notes is saved on this device.",d:Date.now()}],photos:[]};
+let S=Object.assign({},DEF);
+try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
 
-    <!-- Control Center -->
-    <div id="controlCenter" class="control-center">
-        <div class="control-center-bg" id="controlCenterBg"></div>
-        <div class="control-center-content">
-            <div class="control-row">
-                <div class="control-group glass">
-                    <div class="control-toggle active" data-control="wifi">📶<br><span>Wi-Fi</span></div>
-                    <div class="control-toggle active" data-control="bluetooth">🔗<br><span>Bluetooth</span></div>
-                    <div class="control-toggle" data-control="airplane">✈️<br><span>Airplane</span></div>
-                </div>
-                <div class="control-group glass">
-                    <div class="control-slider">
-                        <div class="slider-label">🔆</div>
-                        <input type="range" min="0" max="100" value="80" class="slider">
-                    </div>
-                    <div class="control-slider">
-                        <div class="slider-label">🔊</div>
-                        <input type="range" min="0" max="100" value="50" class="slider">
-                    </div>
-                </div>
-            </div>
-            <div class="control-row">
-                <div class="control-group large glass">
-                    <div class="control-btn" data-control="onedesk">🖥️<br><span>OneDesk</span></div>
-                    <div class="control-btn" data-control="rotation">🔄<br><span>Rotation</span></div>
-                    <div class="control-btn" data-control="focus">🌙<br><span>Focus</span></div>
-                    <div class="control-btn" data-control="flashlight">🔦<br><span>Flashlight</span></div>
-                </div>
-            </div>
-        </div>
-    </div>
+const $=(s,r=document)=>r.querySelector(s);
+const E=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+let toastT;
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("on"),1900)}
+const rnd=(a,b)=>a+Math.random()*(b-a);
+function applyTheme(){
+  const d=document.documentElement;
+  d.style.setProperty("--accent",S.accent);d.style.setProperty("--accent2",S.accent2);
+  d.style.setProperty("--isq",{squircle:"22px",round:"50%",soft:"14px",square:"6px"}[S.shape]||"22px");
+}
+function tick(){const d=new Date();const h=d.getHours()%12||12;
+  $("#sbTime").textContent=h+":"+String(d.getMinutes()).padStart(2,"0");}
 
-    <!-- Notification Center -->
-    <div id="notificationCenter" class="notification-center">
-        <div class="notification-bg" id="notificationBg"></div>
-        <div class="notification-content">
-            <div class="notification-header">
-                <h2>Notifications</h2>
-                <button class="btn-clear">Clear All</button>
-            </div>
-            <div class="notification-list">
-                <div class="notification-item glass">
-                    <div class="notification-app-icon">📱</div>
-                    <div class="notification-info">
-                        <div class="notification-title">Software Update</div>
-                        <div class="notification-body">OneOS 27.0.1 is available</div>
-                        <div class="notification-time">2m ago</div>
-                    </div>
-                </div>
-                <div class="notification-item glass">
-                    <div class="notification-app-icon">🛍️</div>
-                    <div class="notification-info">
-                        <div class="notification-title">App Store</div>
-                        <div class="notification-body">Updates available for 3 apps</div>
-                        <div class="notification-time">1h ago</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+const P={
+phone:'<path d="M6.5 3h3l1.5 4-2 1.5a12 12 0 006 6L16.5 12l4 1.5v3a2 2 0 01-2.2 2A17 17 0 014.5 5.2 2 2 0 016.5 3z"/>',
+files:'<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>',
+reminders:'<path d="M8 7h11M8 12h11M8 17h7"/><circle cx="4.5" cy="7" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="17" r="1.2"/>',
+maps:'<path d="M9 3L3 5.5v15L9 18l6 2.5 6-2.5v-15L15 6z"/><path d="M9 3v15M15 6v14.5"/>',
+home:'<path d="M4 11l8-7 8 7v9a1 1 0 01-1 1h-5v-6H10v6H5a1 1 0 01-1-1z"/>',
+camera:'<path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 011 1v9a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z"/><circle cx="12" cy="13.5" r="3.6"/>',
+store:'<path d="M12 3v18M5 7l14 10M19 7L5 17"/>',
+books:'<path d="M4 5a2 2 0 012-2h5v18H6a2 2 0 01-2-2z"/><path d="M20 5a2 2 0 00-2-2h-5v18h5a2 2 0 002-2z"/>',
+games:'<rect x="3" y="7" width="18" height="11" rx="4"/><path d="M8 11v3M6.5 12.5h3M15 12h.01M17.5 14h.01"/>',
+tv:'<rect x="3" y="5" width="18" height="13" rx="2"/><path d="M8 21h8"/>',
+news:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/>',
+settings:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
+messages:'<path d="M4 5h16a1 1 0 011 1v9a1 1 0 01-1 1H9l-5 4V6a1 1 0 011-1z"/>',
+safari:'<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
+music:'<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
+mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/>',
+calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+photos:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M4 17l5-5 4 4 3-2 4 4"/>',
+calc:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01M16 17h.01"/>',
+clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+weather:'<path d="M7 16a4 4 0 010-8 5.5 5.5 0 0110.5 1.5A3.5 3.5 0 0117 16z"/><path d="M8 20l1-2M12 20l1-2M16 20l1-2"/>',
+notes:'<path d="M5 3h11l3 3v15H5z"/><path d="M9 9h6M9 13h6M9 17h4"/>',
+contacts:'<circle cx="12" cy="9" r="3.5"/><path d="M5 20a7 7 0 0114 0"/>',
+translate:'<path d="M4 6h8M8 4v2M10.5 6c0 4-2.5 7-6 8"/><path d="M7 11l4 6M13 20l4-9 4 9M14.5 17h5"/>',
+memo:'<rect x="8" y="3" width="8" height="18" rx="4"/><path d="M12 8v5"/>',
+podcasts:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M9 17a4 4 0 016 0M7.5 20a7.5 7.5 0 019 0"/>',
+stocks:'<path d="M4 18l5-6 4 3 6-8"/><path d="M15 7h4v4"/>',
+wallet:'<rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M16.5 14.5h.01"/>',
+fitness:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+journal:'<path d="M6 3h12v18l-6-4-6 4z"/><path d="M9 8h6"/>',
+shortcuts:'<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>',
+tips:'<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 00-3 11v3h6v-3a6 6 0 00-3-11z"/>',
+freeform:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 15l3-4 3 3 4-6"/>',
+measure:'<rect x="2" y="8" width="20" height="8" rx="2"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/>',
+photobooth:'<rect x="4" y="6" width="16" height="14" rx="2"/><circle cx="12" cy="13" r="3.4"/><path d="M9 3h6"/>',
+keynote:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 16v4M8 20h8"/>',
+pages:'<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/>',
+numbers:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M10 3v18"/>',
+onedesk:'<rect x="2" y="5" width="20" height="12" rx="2"/><path d="M2 19h20M8 21h8"/>',
+goodlock:'<rect x="4" y="8" width="16" height="12" rx="2"/><path d="M9 8V5h6v3M12 12v4"/>',
+ai:'<path d="M12 3l2.2 5.4L20 10l-5.8 1.6L12 17l-2.2-5.4L4 10l5.8-1.6z"/>',
+galaxy:'<circle cx="12" cy="12" r="9"/><path d="M8 15l8-6"/>',
+update:'<path d="M12 4v11M8 11l4 4 4-4"/><path d="M4 18h16"/>',
+wifi:'<path d="M2 8.5a15 15 0 0120 0M5 12a10 10 0 0114 0M8.5 15.5a5 5 0 017 0M12 19h.01"/>',
+bt:'<path d="M8 7l8 10-4 3V4l4 3-8 10"/>',
+moon:'<path d="M20 14a8 8 0 01-9.5-9.5A8.5 8.5 0 1020 14z"/>',
+sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/>',
+vol:'<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 010 6"/>',
+back:'<path d="M15 5l-7 7 7 7"/>',
+star:'<path d="M12 3l2.6 6.1 6.4.5-4.9 4.2 1.5 6.2L12 16.6 6.4 20l1.5-6.2L3 9.6l6.4-.5z"/>'
+};
+const ico=k=>`<svg viewBox="0 0 24 24">${P[k]||P.notes}</svg>`;
 
-    <!-- App Window Template -->
-    <div id="appWindow" class="app-window">
-        <div class="app-window-header">
-            <div class="app-window-controls">
-                <button class="window-btn close" id="appClose">×</button>
-                <button class="window-btn minimize">−</button>
-                <button class="window-btn maximize">□</button>
-            </div>
-            <div class="app-window-title" id="appWindowTitle">App</div>
-        </div>
-        <div class="app-window-content" id="appWindowContent"></div>
-    </div>
+/* ---------- APPS ---------- */
+const APPS={};
+const defApp=(id,n,c,ic,fn)=>APPS[id]={id,n,c,ic,fn};
 
-    <!-- OneDesk (Samsung DeX) -->
-    <div id="onedeskView" class="onedesk-view">
-        <div class="onedesk-header">
-            <div class="onedesk-title">OneDesk</div>
-            <button class="onedesk-exit" id="onedeskExit">Exit to Home</button>
-        </div>
-        <div class="onedesk-content">
-            <div class="onedesk-taskbar">
-                <div class="onedesk-start">⚡ Start</div>
-                <div class="onedesk-apps"></div>
-                <div class="onedesk-tray">
-                    <span id="onedeskTime">9:41</span>
-                </div>
-            </div>
-            <div class="onedesk-desktop">
-                <div class="onedesk-desktop-icon" data-app="files">
-                    <div class="desktop-icon">📁</div>
-                    <span>Files</span>
-                </div>
-                <div class="onedesk-desktop-icon" data-app="browser">
-                    <div class="desktop-icon">🌐</div>
-                    <span>Browser</span>
-                </div>
-                <div class="onedesk-desktop-icon" data-app="settings">
-                    <div class="desktop-icon">⚙️</div>
-                    <span>Settings</span>
-                </div>
-            </div>
-        </div>
-    </div>
+defApp("files","Files",["#3ba9ff","#1668d6"],"files",b=>{
+  let cwd="/OneOS";
+  const get=()=>JSON.parse(localStorage.getItem("oneos.fs")||"null")||{
+    "/OneOS":[{n:"Documents",d:true},{n:"Pictures",d:true},{n:"Downloads",d:true},{n:"readme.txt",d:false,b:"Welcome to OneOS Files. Everything lives on your device."}],
+    "/OneOS/Documents":[{n:"notes.txt",d:false,b:"Sample document."}],"/OneOS/Pictures":[],"/OneOS/Downloads":[]};
+  let fs=get();const put=()=>localStorage.setItem("oneos.fs",JSON.stringify(fs));
+  const draw=()=>{b.innerHTML="";
+    b.appendChild(E("div","muted",`<b style="color:#fff">${cwd}</b>`));
+    if(cwd!=="/OneOS"){const up=E("div","item",`<span class="ic" style="background:#3a3f4b">${ico("back")}</span>Up`);
+      up.onclick=()=>{cwd=cwd.split("/").slice(0,-1).join("/")||"/OneOS";draw()};b.appendChild(up)}
+    const list=E("div","list");b.appendChild(list);
+    (fs[cwd]||[]).forEach(f=>{
+      const it=E("div","item",`<span class="ic" style="background:${f.d?"#c99a2e":"#3a4250"}">${ico(f.d?"files":"notes")}</span><span>${f.n}</span><span class="chev">›</span>`);
+      it.onclick=()=>{if(f.d){cwd+="/"+f.n;if(!fs[cwd])fs[cwd]=[];put();draw()}
+        else{S.notes.unshift({t:f.n,b:f.b||"",d:Date.now()});save();toast("Opened in Notes");openApp("notes")}};
+      list.appendChild(it)});
+    if(!(fs[cwd]||[]).length)b.appendChild(E("div","muted","This folder is empty."));
+    const bar=E("div");bar.style.cssText="display:flex;gap:8px;margin-top:14px";
+    const mk=(label,dir)=>{const x=E("div","chip",label);x.onclick=()=>{const nm=prompt(dir?"Folder name":"File name");if(!nm)return;
+      (fs[cwd]=fs[cwd]||[]).push({n:nm,d:dir,b:dir?undefined:"New file"});put();draw()};bar.appendChild(x)};
+    mk("+ Folder",true);mk("+ File",false);b.appendChild(bar)};
+  draw()});
 
-    <script src="js/oneos.js"></script>
+defApp("notes","Notes",["#f7c948","#e0a015"],"notes",b=>{
+  const list=()=>{b.innerHTML="";
+    const add=E("div","chip","+ New note");add.onclick=()=>editor({t:"",b:"",d:Date.now()});b.appendChild(add);
+    const l=E("div","list");l.style.marginTop="10px";b.appendChild(l);
+    S.notes.forEach((n,i)=>{const it=E("div","item",`<div style="flex:1;overflow:hidden"><div style="font-weight:700">${n.t||"Untitled"}</div>
+      <div class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(n.b||"").slice(0,44)||"Empty note"}</div></div>`);
+      it.onclick=()=>editor(n,i);l.appendChild(it)})};
+  const editor=(n,i)=>{b.innerHTML="";
+    const t=E("input","field");t.value=n.t;t.placeholder="Title";t.style.marginBottom="10px";b.appendChild(t);
+    const a=E("textarea","field");a.value=n.b;a.placeholder="Start writing…";a.style.cssText="min-height:230px;resize:none;line-height:1.6";b.appendChild(a);
+    const row=E("div");row.style.cssText="display:flex;gap:8px;margin-top:12px";
+    const sv=E("div","chip","Save");sv.onclick=()=>{n.t=t.value||"Untitled";n.b=a.value;n.d=Date.now();
+      if(i==null)S.notes.unshift(n);save();toast("Note saved");list()};
+    const del=E("div","chip","Delete");del.onclick=()=>{if(i!=null)S.notes.splice(i,1);else S.notes=S.notes.filter(x=>x!==n);save();list()};
+    const bk=E("div","chip","‹ Back");bk.onclick=list;
+    row.append(sv,del,bk);b.appendChild(row)};
+  list()});
+
+defApp("reminders","Reminders",["#ff6b6b","#d92b2b"],"reminders",b=>{
+  let r=JSON.parse(localStorage.getItem("oneos.rem")||'[{"t":"Update OneOS","d":false},{"t":"Try OneDesk","d":true}]');
+  const put=()=>localStorage.setItem("oneos.rem",JSON.stringify(r));
+  const draw=()=>{b.innerHTML="";const l=E("div","list");b.appendChild(l);
+    r.forEach(x=>{const it=E("div","item",`<span class="ic" style="background:${x.d?"#2f8f5b":"#ff6b6b"}">${x.d?"✓":""}</span>
+      <span style="flex:1;${x.d?"text-decoration:line-through;opacity:.5":""}">${x.t}</span>`);
+      it.onclick=()=>{x.d=!x.d;put();draw()};l.appendChild(it)});
+    const add=E("div","chip","+ New reminder");add.onclick=()=>{const t=prompt("Reminder");if(t){r.push({t,d:false});put();draw()}};b.appendChild(add)};
+  draw()});
+
+defApp("calc","Calculator",["#6b7480","#3a414c"],"calc",b=>{
+  b.innerHTML='<div style="display:flex;flex-direction:column;gap:12px"><div id="cdisp" style="font-size:44px;font-weight:250;text-align:right;padding:10px;letter-spacing:-2px">0</div><div id="cgrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px"></div></div>';
+  const disp=$("#cdisp",b);let cur="0",prev=null,op=null;
+  ["AC","±","%","÷","7","8","9","×","4","5","6","−","1","2","3","+","0",".","⌫","="].forEach(k=>{
+    const btn=E("div",null,k);
+    btn.style.cssText=`padding:16px 0;text-align:center;border-radius:16px;font-size:19px;font-weight:600;cursor:pointer;background:${"÷×−+=".includes(k)?"linear-gradient(140deg,var(--accent),var(--accent2))":"rgba(255,255,255,.09)"}`;
+    btn.onclick=()=>{
+      if(k==="AC"){cur="0";prev=null;op=null}
+      else if(k==="⌫")cur=cur.length>1?cur.slice(0,-1):"0";
+      else if(k==="±")cur=String(-parseFloat(cur));
+      else if(k==="%")cur=String(parseFloat(cur)/100);
+      else if("÷×−+".includes(k)){prev=parseFloat(cur);op=k;cur="0"}
+      else if(k==="="){const a=prev,n=parseFloat(cur);let r=0;
+        if(op==="+")r=a+n;if(op==="−")r=a-n;if(op==="×")r=a*n;if(op==="÷")r=a/n;
+        cur=String(Math.round(r*1e10)/1e10);prev=null;op=null}
+      else cur=cur==="0"?k:cur+k;
+      disp.textContent=cur};
+    $("#cgrid",b).appendChild(btn)})});
+
+defApp("clock","Clock",["#4b5563","#232a33"],"clock",b=>{
+  const t=E("div");t.style.cssText="text-align:center;font-size:52px;font-weight:250;letter-spacing:-2px;font-variant-numeric:tabular-nums";b.appendChild(t);
+  const d=E("div","muted");d.style.textAlign="center";b.appendChild(d);
+  const up=()=>{const n=new Date();t.textContent=n.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"});d.textContent=n.toDateString()};
+  up();setInterval(up,1000);
+  b.appendChild(E("h2","sec","World clock"));
+  const l=E("div","list");b.appendChild(l);
+  [["Cupertino","America/Los_Angeles"],["London","Europe/London"],["Tokyo","Asia/Tokyo"],["Seoul","Asia/Seoul"]].forEach(([c,tz])=>{
+    l.appendChild(E("div","item",`<span style="flex:1">${c}</span><span class="muted">${new Date().toLocaleTimeString([],{timeZone:tz,hour:"2-digit",minute:"2-digit"})}</span>`))});
+  let run=false,ms=0;const sw=E("div","chip","Start stopwatch");
+  sw.onclick=()=>{run=!run;sw.textContent=run?"Stop":"Start stopwatch";sw.classList.toggle("on",run)};
+  b.appendChild(sw);const out=E("div","muted");out.style.marginTop="8px";b.appendChild(out);
+  setInterval(()=>{if(run){ms+=100;out.textContent=(ms/1000).toFixed(1)+"s"}},100)});
+
+defApp("weather","Weather",["#38bdf8","#0e7490"],"weather",b=>{
+  b.innerHTML=`<div class="glass" style="padding:22px;text-align:center;margin-bottom:12px">
+    <div class="dim2" style="font-size:13px">San Francisco</div><div style="font-size:64px;font-weight:250;letter-spacing:-3px">54°</div>
+    <div style="font-size:13px;font-weight:650">Partly cloudy</div><div class="muted">H:57° L:49°</div></div>`;
+  const hr=E("div","glass");hr.style.cssText="padding:14px;display:flex;gap:16px;overflow-x:auto;margin-bottom:12px";
+  ["Now","1PM","2PM","3PM","4PM","5PM"].forEach((h,i)=>hr.appendChild(E("div",null,
+    `<div class="muted" style="font-size:10px">${h}</div><div style="font-size:17px;margin:6px 0">${i>2?"🌥":"☀️"}</div><div style="font-size:12px">${54-i*2}°</div>`)));
+  b.appendChild(hr);
+  const wk=E("div","glass");wk.style.cssText="padding:6px 14px";
+  ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach((d,i)=>wk.appendChild(E("div","item",
+    `<span style="flex:1">${d}</span><span class="muted">${i>3?"🌧":"⛅"}</span><span class="muted" style="width:56px;text-align:right">${58-i}° ${46-i}°</span>`)));
+  b.appendChild(wk)});
+
+defApp("photos","Photos",["#f472b6","#be185d"],"photos",b=>{
+  const hues=[210,260,320,15,150,190,40,290];
+  const g=E("div");g.style.cssText="display:grid;grid-template-columns:repeat(3,1fr);gap:6px";b.appendChild(g);
+  for(let i=0;i<18;i++){const d=E("div","photo");
+    const bg=`linear-gradient(${(i*37)%360}deg,hsl(${hues[i%8]} 65% 55%),hsl(${(hues[i%8]+60)%360} 60% 28%))`;
+    d.style.background=bg;
+    d.onclick=()=>{b.innerHTML=`<div style="aspect-ratio:3/4;border-radius:20px;background:${bg}"></div>
+      <div class="muted" style="margin-top:10px;text-align:center">IMG_${1000+i}.HEIC · Today</div>`};
+    g.appendChild(d)}
+  S.photos.slice(-6).reverse().forEach(src=>{const d=E("img","photo");d.src=src;d.style.objectFit="cover";g.prepend(d)})});
+
+defApp("camera","Camera",["#94a3b8","#334155"],"camera",b=>{
+  b.innerHTML=`<div style="aspect-ratio:3/4;border-radius:22px;overflow:hidden;background:#0b0f16;position:relative;border:1px solid var(--gb)">
+    <video id="camv" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8b95a7;font-size:12px" id="camph">Starting camera…</div></div>
+    <div style="display:flex;justify-content:center;margin-top:16px"><div id="shut" style="width:66px;height:66px;border-radius:50%;background:#fff;border:5px solid rgba(255,255,255,.3);cursor:pointer"></div></div>`;
+  const v=$("#camv",b),ph=$("#camph",b);
+  if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+    navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}}).then(s=>{v.srcObject=s;ph.style.display="none"})
+      .catch(()=>{ph.textContent="No camera — using placeholder"});
+  } else ph.textContent="No camera — using placeholder";
+  $("#shut",b).onclick=()=>{
+    const c=document.createElement("canvas");c.width=480;c.height=640;const x=c.getContext("2d");
+    if(v.videoWidth)x.drawImage(v,0,0,480,640);
+    else{const gr=x.createLinearGradient(0,0,480,640);gr.addColorStop(0,"#243b55");gr.addColorStop(1,"#141e30");x.fillStyle=gr;x.fillRect(0,0,480,640)}
+    S.photos.push(c.toDataURL("image/jpeg",.6));if(S.photos.length>12)S.photos.shift();save();toast("Photo saved to Photos")}});
+
+defApp("maps","Maps",["#34d399","#047857"],"maps",b=>{
+  b.innerHTML=`<div style="border-radius:20px;overflow:hidden;border:1px solid var(--gb);position:relative;height:340px;background:#0d1520">
+    <canvas id="mapc" width="700" height="680" style="width:100%;height:100%"></canvas>
+    <div class="glass" style="position:absolute;left:10px;right:10px;bottom:10px;padding:12px;border-radius:16px">
+      <div style="font-weight:700;font-size:13px">Current location</div><div class="muted">Market St · San Francisco</div></div></div>
+    <div style="display:flex;gap:8px;margin-top:12px;overflow:auto">
+      <div class="chip">☕ Cafés</div><div class="chip">⛽ Gas</div><div class="chip">🛒 Groceries</div><div class="chip">🏥 Hospital</div></div>`;
+  const c=$("#mapc",b),x=c.getContext("2d");
+  x.fillStyle="#0d1520";x.fillRect(0,0,700,680);
+  x.strokeStyle="#1c2b3d";x.lineWidth=26;
+  for(let i=0;i<7;i++){x.beginPath();x.moveTo(0,i*100+40);x.lineTo(700,i*100+20);x.stroke()}
+  for(let i=0;i<8;i++){x.beginPath();x.moveTo(i*95+30,0);x.lineTo(i*95+10,680);x.stroke()}
+  x.strokeStyle="#2b6b52";x.lineWidth=8;x.beginPath();x.moveTo(0,520);x.lineTo(700,300);x.stroke();
+  x.fillStyle="rgba(52,211,153,.22)";x.beginPath();x.arc(350,320,30,0,7);x.fill();
+  x.fillStyle="#34d399";x.beginPath();x.arc(350,320,11,0,7);x.fill()});
+
+defApp("music","Music",["#f43f5e","#9f1239"],"music",b=>{
+  b.innerHTML=`<div style="text-align:center"><div style="width:190px;height:190px;border-radius:24px;margin:8px auto 16px;
+    background:conic-gradient(from 40deg,#f43f5e,#a855f7,#f59e0b,#f43f5e);box-shadow:0 20px 50px rgba(244,63,94,.35)"></div>
+    <div style="font-weight:750;font-size:17px">Liquid Glass</div><div class="muted">OneOS Sound System</div></div>
+    <div class="prog" style="margin-top:20px"><i id="mprog" style="width:22%"></i></div>
+    <div style="display:flex;justify-content:space-between" class="muted"><span id="mcur">0:42</span><span>3:18</span></div>
+    <div style="display:flex;justify-content:center;gap:26px;font-size:24px;margin-top:14px"><span>⏮</span><span id="mpp" style="cursor:pointer">⏸</span><span>⏭</span></div>`;
+  let p=22,run=true;
+  setInterval(()=>{if(!run)return;p=(p+.35)%100;$("#mprog",b).style.width=p+"%";
+    $("#mcur",b).textContent=`${Math.floor(p/100*3)}:${String(Math.floor(p%60)).padStart(2,"0")}`},350);
+  $("#mpp",b).onclick=e=>{run=!run;e.target.textContent=run?"⏸":"▶"}});
+
+defApp("messages","Messages",["#22c55e","#15803d"],"messages",b=>{
+  b.innerHTML='<div id="mlist" style="display:flex;flex-direction:column;margin-bottom:12px"></div>';
+  const add=(txt,me)=>{$("#mlist",b).appendChild(E("div","msg "+(me?"me":"them"),txt));b.scrollTop=b.scrollHeight};
+  add("Hey! You on OneOS now? 👀");add("Yeah, the glass looks unreal.");
+  const row=E("div");row.style.cssText="display:flex;gap:8px";
+  const i=E("input","field");i.placeholder="Message…";const s=E("div","chip","↑");
+  const send=()=>{if(!i.value.trim())return;add(i.value,true);i.value="";
+    setTimeout(()=>add(["Nice. Send a screenshot","OneDesk is wild btw","Ok that's actually clean 🔥"][Math.floor(Math.random()*3)]),800)};
+  s.onclick=send;i.onkeydown=e=>{if(e.key==="Enter")send()};row.append(i,s);b.appendChild(row)});
+
+defApp("mail","Mail",["#3b82f6","#1d4ed8"],"mail",b=>{
+  const mails=[["OneOS Team","Welcome to OneOS 1.0","Thanks for setting up your device. Here's everything new in liquid glass."],
+    ["Good Lock","New modules available","Theme Park and Lock Star just shipped."],["Play Store","Your apps are ready","3 updates pending."]];
+  const l=E("div","list");b.appendChild(l);
+  mails.forEach(([f,s,x])=>{const it=E("div","item",`<span class="ic" style="background:#3b82f6">${ico("mail")}</span>
+    <div style="flex:1;overflow:hidden"><div style="font-weight:700;font-size:13px">${f}</div>
+    <div class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s}</div></div>`);
+    it.onclick=()=>{b.innerHTML=`<div class="fade"><div style="font-size:17px;font-weight:750;margin-bottom:4px">${s}</div>
+      <div class="muted" style="margin-bottom:14px">From ${f}</div><div style="line-height:1.7;font-size:14px">${x}</div></div>`};
+    l.appendChild(it)})});
+
+defApp("calendar","Calendar",["#ef4444","#991b1b"],"calendar",b=>{
+  const now=new Date(),y=now.getFullYear(),mo=now.getMonth();
+  b.innerHTML=`<div style="font-size:17px;font-weight:750;margin-bottom:10px">${now.toLocaleString([],{month:"long"})} ${y}</div>`;
+  const g=E("div");g.style.cssText="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:12px";b.appendChild(g);
+  ["S","M","T","W","T","F","S"].forEach(d=>g.appendChild(E("div","muted",d)));
+  const first=new Date(y,mo,1).getDay(),days=new Date(y,mo+1,0).getDate();
+  for(let i=0;i<first;i++)g.appendChild(E("div"));
+  for(let d=1;d<=days;d++){const c=E("div",null,d);
+    c.style.cssText=`padding:8px 0;border-radius:10px;${d===now.getDate()?"background:linear-gradient(140deg,var(--accent),var(--accent2));font-weight:750":"background:rgba(255,255,255,.05)"}`;
+    g.appendChild(c)}
+  b.appendChild(E("h2","sec","Today"));
+  const l=E("div","list");b.appendChild(l);
+  [["10:00","Design review","#ef4444"],["13:30","Coffee with Sam","#3b82f6"],["18:00","OneOS update check","#22c55e"]].forEach(([t,n,c])=>
+    l.appendChild(E("div","item",`<span style="width:3px;height:28px;border-radius:3px;background:${c}"></span>
+      <div><div style="font-weight:700;font-size:13px">${n}</div><div class="muted">${t}</div></div>`)))});
+
+defApp("browser","Browser",["#0ea5e9","#0369a1"],"safari",b=>{
+  b.innerHTML=`<div style="display:flex;gap:8px;margin-bottom:10px">
+      <input class="field" id="url" placeholder="Search or enter address" value="https://example.com">
+      <div class="chip" id="go">Go</div></div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;overflow:auto" id="bm"></div>
+    <iframe id="frame" src="https://example.com" style="width:100%;height:400px;border:1px solid var(--gb);border-radius:16px;background:#fff"></iframe>
+    <div class="muted" style="margin-top:8px">Some sites block embedding — the frame may stay blank.</div>`;
+  const load=()=>{let u=$("#url",b).value.trim();if(!/^https?:/.test(u))u="https://"+u;$("#frame",b).src=u};
+  ["wikipedia.org","venice.ai","github.com","news.ycombinator.com"].forEach(u=>{
+    const c=E("div","chip",u);c.onclick=()=>{$("#url",b).value="https://"+u;load()};$("#bm",b).appendChild(c)});
+  $("#go",b).onclick=load;$("#url",b).onkeydown=e=>{if(e.key==="Enter")load()}});
+
+const CATALOG=[["Nova Launcher","Launcher","#8b5cf6",4.6],["VLC","Media","#f97316",4.4],["Termux","Developer","#22c55e",4.7],
+  ["Discord","Social","#6366f1",4.3],["Spotify","Music","#1db954",4.5],["Minecraft","Games","#16a34a",4.2],
+  ["Krita","Creative","#0ea5e9",4.1],["Bitwarden","Tools","#2563eb",4.8]];
+
+defApp("play","Play Store",["#34d399","#0d9488"],"store",b=>{
+  b.innerHTML='<input class="field" id="q" placeholder="Search apps & games" style="margin-bottom:14px">';
+  const l=E("div","list");b.appendChild(l);
+  CATALOG.forEach(([n,c,col,rt])=>{const it=E("div","item",`<span class="ic" style="background:${col}">${ico("star")}</span>
+    <div style="flex:1"><div style="font-weight:700">${n}</div><div class="muted">${c} · ★ ${rt}</div></div>`);
+    const btn=E("div","chip",S.installed.includes(n)?"Open":"Install");
+    btn.onclick=e=>{e.stopPropagation();
+      if(S.installed.includes(n)){toast(n+" opened");return}
+      btn.textContent="…";let p=0;
+      const iv=setInterval(()=>{p+=12;btn.textContent=p+"%";
+        if(p>=100){clearInterval(iv);if(!S.installed.includes(n))S.installed.push(n);save();btn.textContent="Open";toast(n+" installed");buildHome()}},110)};
+    it.appendChild(btn);l.appendChild(it)})});
+
+defApp("ai","OneAI",["#a855f7","#6d28d9"],"ai",b=>{
+  b.innerHTML='<div id="chat" style="display:flex;flex-direction:column"></div>';
+  const push=(t,me)=>{$("#chat",b).appendChild(E("div","msg "+(me?"me":"them"),t));b.scrollTop=b.scrollHeight};
+  push("Hi "+S.name+". I can drive this device for you. Try: “open settings”, “install Spotify”, “turn on dark mode”, “check for updates”, “what are my specs”.");
+  const row=E("div");row.style.cssText="display:flex;gap:8px;margin-top:10px";
+  const i=E("input","field");i.placeholder="Ask OneAI…";const s=E("div","chip","↑");
+  const send=()=>{const q=i.value.trim();if(!q)return;push(q,true);i.value="";setTimeout(()=>push(reply(q)),420)};
+  s.onclick=send;i.onkeydown=e=>{if(e.key==="Enter")send()};row.append(i,s);b.appendChild(row)});
+
+function reply(q){
+  const t=q.toLowerCase();
+  const m=t.match(/open (\w+)/);
+  if(m){const a=Object.values(APPS).find(a=>a.n.toLowerCase().startsWith(m[1]));
+    if(a){setTimeout(()=>openApp(a.id),250);return "Opening "+a.n+"."}}
+  if(t.includes("install")){const n=CATALOG.find(c=>t.includes(c[0].toLowerCase()));
+    if(n){if(!S.installed.includes(n[0]))S.installed.push(n[0]);save();buildHome();return n[0]+" installed to your home screen."}}
+  if(t.includes("dark")){S.dark=!t.includes("off");save();return "Dark mode "+(S.dark?"on":"off")+"."}
+  if(t.includes("update")){setTimeout(()=>openApp("settings",{sec:"update"}),250);return "Opening Software Update."}
+  if(t.includes("spec"))return "OneOS Pad Pro · N1 Ultra · 16 GB RAM · 512 GB storage · 10,090 mAh at 86%.";
+  if(t.includes("desk")){setTimeout(toggleDesk,250);return "Entering OneDesk."}
+  if(t.includes("battery"))return "86% — about 9 hours left.";
+  const c=["Done.","Got it — anything else?","That's handled.","I can also toggle OneDesk, check updates, or install apps."];
+  return c[Math.floor(Math.random()*c.length)];
+}
+
+defApp("settings","Settings",["#64748b","#334155"],"settings",(b,opts)=>{
+  const sec=opts&&opts.sec;b.innerHTML="";
+  const row=(ic,t,sub,fn,col="#3a4250")=>{const it=E("div","item",`<span class="ic" style="background:${col}">${ico(ic)}</span>
+    <div style="flex:1"><div style="font-weight:650">${t}</div>${sub?`<div class="muted">${sub}</div>`:""}</div><span class="chev">›</span>`);
+    it.onclick=fn;b.appendChild(it)};
+  const hdr=t=>b.appendChild(E("h2","sec",t));
+
+  hdr("Device");
+  const u=E("div","glass");u.style.cssText="padding:16px;display:flex;gap:14px;align-items:center;margin-bottom:10px";
+  u.innerHTML=`<div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(140deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:750">${(S.name||"A")[0]}</div>
+    <div><div style="font-weight:750">${S.name}</div><div class="muted">OneOS Account · ${S.wifi||"Offline"}</div></div>`;
+  b.appendChild(u);
+
+  hdr("Connectivity");
+  row("wifi","Wi-Fi",S.wifiOn?(S.wifi||"On"):"Off",()=>{S.wifiOn=!S.wifiOn;save();openApp("settings")},"#2563eb");
+  row("bt","Bluetooth",S.bt?"On":"Off",()=>{S.bt=!S.bt;save();openApp("settings")},"#4f46e5");
+  row("moon","Do Not Disturb",S.dnd?"On":"Off",()=>{S.dnd=!S.dnd;save();openApp("settings")},"#7c3aed");
+
+  hdr("Display");
+  row("sun","Appearance","Dark",()=>{S.dark=!S.dark;toast("Appearance updated");openApp("settings")},"#f59e0b");
+  const acc=E("div");acc.style.cssText="display:flex;gap:8px;padding:10px 0;flex-wrap:wrap";
+  ["#5b8cff","#a855f7","#22c55e","#f43f5e","#f59e0b","#06b6d4"].forEach(c=>{const d=E("div");
+    d.style.cssText=`width:34px;height:34px;border-radius:50%;background:${c};cursor:pointer;border:2px solid ${S.accent===c?"#fff":"transparent"}`;
+    d.onclick=()=>{S.accent=c;applyTheme();save();openApp("settings")};acc.appendChild(d)});
+  b.appendChild(acc);
+  const shp=E("div");shp.style.cssText="display:flex;gap:8px;padding:4px 0 10px";
+  ["squircle","soft","round","square"].forEach(s=>{const c=E("div","chip"+(S.shape===s?" on":""),s);
+    c.onclick=()=>{S.shape=s;applyTheme();save();openApp("settings")};shp.appendChild(c)});
+  b.appendChild(shp);
+
+  hdr("System");
+  row("goodlock","Good Lock","Modules & customization",()=>openApp("goodlock"),"#8b5cf6");
+  row("onedesk","OneDesk","Desktop mode",()=>toggleDesk(),"#0ea5e9");
+  row("update","Software Update",S.ver+" · up to date",()=>openApp("settings",{sec:"update"}),"#22c55e");
+  row("ai","OneAI","Assistant",()=>openApp("ai"),"#a855f7");
+
+  hdr("About");
+  row("settings","System specs","Model, chip, memory",()=>openApp("settings",{sec:"specs"}),"#475569");
+  row("trash","Reset OneOS","Erase all data",()=>{if(confirm("Erase all OneOS data?")){localStorage.clear();location.reload()}},"#ef4444");
+
+  if(sec==="specs"){
+    b.innerHTML="";b.appendChild(E("h2","sec","System specs"));
+    [["Device name",S.name+"'s OneOS Pad"],["Model","SM-X910 (OneOS Pad Pro)"],["Chipset","OneOS N1 Ultra · 8-core"],
+     ["RAM","16 GB LPDDR5X"],["Storage","512 GB · 148 GB used"],["Display","11.0\" 2880×1848 · 120 Hz"],
+     ["Battery","10,090 mAh · 86%"],["Kernel","5.15.104-oneos"],["Build","OneOS "+S.ver+" (AP1A)"],["Security patch","2026-10-05"]]
+      .forEach(([k,v])=>{const it=E("div","item",`<span class="dim2" style="flex:1">${k}</span><span style="font-weight:650">${v}</span>`);
+        b.appendChild(it)});
+    const st=E("div","glass");st.style.cssText="padding:14px;margin-top:14px";
+    st.innerHTML='<div class="muted" style="margin-bottom:6px">Storage · 148 GB of 512 GB</div><div class="prog"><i style="width:29%"></i></div>';
+    b.appendChild(st)}
+
+  if(sec==="update"){
+    b.innerHTML="";b.appendChild(E("h2","sec","Software Update"));
+    const card=E("div","glass");card.style.cssText="padding:18px";
+    card.innerHTML=`<div style="font-size:17px;font-weight:750">OneOS ${S.ver}</div>
+      <div class="muted" style="margin:4px 0 12px">Build AP1A · Security patch 2026-10-05</div>
+      <div id="updBody" class="muted">Checking for updates…</div>`;
+    b.appendChild(card);
+    setTimeout(()=>{
+      const nv=(parseFloat(S.ver)+0.1).toFixed(1)+".0";
+      $("#updBody").innerHTML=`<div style="font-weight:700;color:#fff;font-size:14px">OneOS ${nv} available</div>
+        <div style="margin:4px 0 10px">• Refined liquid glass blur<br>• OneDesk window snapping<br>• Camera low-light fix<br>• October security patch</div>`;
+      const btn=E("div","btn","Download & Install");btn.style.marginTop="6px";
+      const pr=E("div","prog");pr.innerHTML="<i></i>";
+      btn.onclick=()=>{btn.style.display="none";card.appendChild(pr);let p=0;
+        const iv=setInterval(()=>{p+=5;pr.firstChild.style.width=p+"%";
+          if(p>=100){clearInterval(iv);$("#reboot").classList.add("on");
+            setTimeout(()=>{S.ver=nv;save();$("#reboot").classList.remove("on");toast("OneOS "+nv+" installed");openApp("settings",{sec:"update"})},2600)}},60)};
+      card.appendChild(btn)},1100)}
+});
+
+defApp("goodlock","Good Lock",["#8b5cf6","#6d28d9"],"goodlock",b=>{
+  b.appendChild(E("div","muted","Modules that change how OneOS looks and behaves."));
+  const l=E("div","list");l.style.marginTop="12px";b.appendChild(l);
+  [["Theme Park","Cycle accent color",()=>{S.accent=["#5b8cff","#a855f7","#22c55e","#f43f5e","#f59e0b"][Math.floor(Math.random()*5)];applyTheme();save();toast("Theme applied")}],
+   ["Lock Star","Lock clock weight",()=>{S.theme.clockFont=S.theme.clockFont==="thin"?"bold":"thin";save();toast("Lock clock: "+S.theme.clockFont)}],
+   ["NavStar","Gesture bar / buttons",()=>{S.nav=S.nav==="bar"?"buttons":"bar";save();toast("Navigation: "+S.nav)}],
+   ["MultiStar","OneDesk windows",()=>toggleDesk()],
+   ["Keys Cafe","Keyboard theme",()=>toast("Keyboard theme applied")],
+   ["Icon Pack","Toggle icon shape",()=>{S.shape=S.shape==="round"?"squircle":"round";applyTheme();save();toast("Icons: "+S.shape)}]]
+    .forEach(([n,d,fn])=>{const it=E("div","item",`<span class="ic" style="background:#8b5cf6">${ico("goodlock")}</span>
+      <div style="flex:1"><div style="font-weight:700">${n}</div><div class="muted">${d}</div></div><span class="chev">›</span>`);
+      it.onclick=fn;l.appendChild(it)})});
+
+defApp("onedesk","OneDesk",["#0ea5e9","#0369a1"],"onedesk",b=>{
+  b.appendChild(E("div","muted","OneDesk turns this device into a desktop with resizable windows, a taskbar and a start menu."));
+  const btn=E("div","btn","Launch OneDesk");btn.style.marginTop="14px";btn.onclick=()=>{closeAll();toggleDesk()};b.appendChild(btn)});
+
+function contentApp(items,kind){return b=>{const l=E("div","list");b.appendChild(l);
+  items.forEach(([t,s])=>{const it=E("div","item",
+    `<span class="ic" style="background:linear-gradient(140deg,var(--accent),var(--accent2))">${ico(kind)}</span>
+     <div style="flex:1"><div style="font-weight:700;font-size:13px">${t}</div><div class="muted">${s}</div></div>`);
+    it.onclick=()=>toast("Opening "+t);l.appendChild(it)})}}
+
+defApp("books","Books",["#f59e0b","#b45309"],"books",contentApp([["The Glass Age","Ch. 4 · 12 min left"],["Interfaces","Ch. 1 · New"],["Nightfall","Ch. 9 · 40 min left"]],"books"));
+defApp("tv","TV",["#111827","#000000"],"tv",contentApp([["Continue: Orbit","S2 E4 · 22 min"],["Trending: Deep Water","Film · 1h 52m"],["New: Studio One","Series premiere"]],"tv"));
+defApp("news","News",["#ef4444","#991b1b"],"news",contentApp([["OneOS 1.1 ships glass refinements","Tech · 2h"],["OneDesk gains window snapping","Product · 5h"],["Review: the new OneOS Pad","Hardware · 1d"]],"news"));
+defApp("podcasts","Podcasts",["#a855f7","#6d28d9"],"podcasts",contentApp([["The Build Log · 42","New episode"],["Interface Wars","Subscribed"],["Daily Byte","3 new"]],"podcasts"));
+defApp("stocks","Stocks",["#22c55e","#15803d"],"stocks",b=>{
+  const l=E("div","list");b.appendChild(l);
+  [["VVV","12.42","+4.1%"],["DIEM","1.02","+0.2%"],["BTC","64,120","-1.4%"],["AAPL","231.7","+0.6%"],["NVDA","128.3","+2.2%"]].forEach(([t,p,c])=>
+    l.appendChild(E("div","item",`<div style="flex:1"><div style="font-weight:750">${t}</div><div class="muted">$${p}</div></div>
+      <span style="color:${c.startsWith("-")?"#ef4444":"#22c55e"};font-weight:700">${c}</span>`)))});
+defApp("wallet","Wallet",["#1f2937","#0b1220"],"wallet",contentApp([["OneOS Card","•••• 4417"],["Boarding pass","SFO → ICN"],["Transit","$24.50 left"]],"wallet"));
+defApp("fitness","Fitness",["#84cc16","#4d7c0f"],"fitness",b=>{
+  b.innerHTML='<div class="grid2"><div class="tile"><b>6,240</b>Steps</div><div class="tile"><b>412</b>kcal</div><div class="tile"><b>42m</b>Exercise</div><div class="tile"><b>7h 20m</b>Sleep</div></div>'});
+defApp("journal","Journal",["#f472b6","#9d174d"],"journal",contentApp([["Today","2 entries"],["Yesterday","1 entry"],["Last week","5 entries"]],"journal"));
+defApp("shortcuts","Shortcuts",["#8b5cf6","#5b21b6"],"shortcuts",contentApp([["Enter OneDesk","One tap"],["Do Not Disturb 1h","Automation"],["Screenshot + AI","Automation"]],"shortcuts"));
+defApp("tips","Tips",["#facc15","#ca8a04"],"tips",contentApp([["Swipe up for recents","Gestures"],["Tap the status bar","Control Center"],["Ask OneAI","Assistant"]],"tips"));
+defApp("freeform","Freeform",["#22d3ee","#0e7490"],"freeform",b=>{
+  b.innerHTML='<canvas id="ff" width="600" height="380" style="width:100%;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid var(--gb);touch-action:none"></canvas>';
+  const c=$("#ff",b),x=c.getContext("2d");x.lineWidth=3;x.strokeStyle="#22d3ee";x.lineCap="round";
+  let d=false;const pos=e=>{const r=c.getBoundingClientRect();return[(e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height]};
+  c.onpointerdown=e=>{d=true;x.beginPath();x.moveTo(...pos(e))};
+  c.onpointermove=e=>{if(d){x.lineTo(...pos(e));x.stroke()}};
+  c.onpointerup=()=>d=false});
+defApp("measure","Measure",["#eab308","#a16207"],"measure",b=>{
+  b.innerHTML='<div class="glass" style="padding:26px;text-align:center"><div class="muted">Point at a surface</div>
+    <div style="font-size:52px;font-weight:250;margin:10px 0">24.6<span style="font-size:22px">cm</span></div>
+    <div class="chip">Start measuring</div></div>'});
+defApp("photobooth","Photo Booth",["#f97316","#c2410c"],"photobooth",contentApp([["4-up","Classic"],["Mirror","Effect"],["Thermal","Effect"]],"photobooth"));
+defApp("keynote","Keynote",["#f59e0b","#b45309"],"keynote",contentApp([["OneOS Pitch","8 slides"],["Glass Deck","12 slides"]],"keynote"));
+defApp("pages","Pages",["#3b82f6","#1e40af"],"pages",contentApp([["Design Doc","Edited 2h ago"],["Release Notes","Edited yesterday"]],"pages"));
+defApp("numbers","Numbers",["#22c55e","#166534"],"numbers",contentApp([["Budget 2026","Sheet"],["Metrics","Sheet"]],"numbers"));
+defApp("games","Games",["#ec4899","#9d174d"],"games",contentApp([["Orbit","Arcade"],["Glass Blocks","Puzzle"]],"games"));
+defApp("contacts","Contacts",["#60a5fa","#1d4ed8"],"contacts",b=>{
+  const l=E("div","list");b.appendChild(l);
+  [["Sam Rivera","+1 415 555 0132"],["Dana Kim","+1 415 555 0198"],["Lee Ortiz","+1 415 555 0110"]].forEach(([n,p])=>
+    l.appendChild(E("div","item",`<span class="ic" style="background:#60a5fa">${ico("contacts")}</span>
+      <div style="flex:1"><div style="font-weight:700">${n}</div><div class="muted">${p}</div></div>`)))});
+defApp("translate","Translate",["#06b6d4","#0e7490"],"translate",b=>{
+  b.innerHTML='<input class="field" placeholder="Enter text" style="margin-bottom:10px">
+    <div class="glass" style="padding:18px;min-height:80px"><div class="muted">Translation appears here</div></div>
+    <div style="display:flex;gap:6px;margin-top:12px"><div class="chip">English</div><div class="chip">→</div><div class="chip">Spanish</div></div>'});
+defApp("memo","Voice Memos",["#f43f5e","#9f1239"],"memo",b=>{
+  b.innerHTML='<div class="list"><div class="item"><span class="ic" style="background:#f43f5e">▶</span>
+    <div style="flex:1"><div style="font-weight:700">New Recording</div><div class="muted">0:14 · Today</div></div></div></div>'});
+defApp("galaxy","Galaxy Store",["#4f46e5","#312e81"],"galaxy",contentApp([["Good Lock","System"],["Samsung Internet","Browser"]],"galaxy"));
+defApp("homeapp","Home",["#f59e0b","#b45309"],"home",contentApp([["Lights","Off"],["Thermostat","21°C"],["Front door","Locked"]],"home"));
+defApp("facetime","FaceTime",["#22c55e","#15803d"],"phone",contentApp([["Sam Rivera","Recent"],["Dana Kim","Missed"]],"phone"));
+
+/* ---------- HOME ---------- */
+const PAGES=[
+ ["files","reminders","maps","homeapp","camera","books","games","tv","news","galaxy","translate","memo"],
+ ["messages","browser","music","mail","calendar","photos","calc","clock","weather","notes","contacts","podcasts"],
+ ["play","onedesk","goodlock","ai","stocks","wallet","fitness","journal","shortcuts","tips","freeform","measure","photobooth","keynote","pages","numbers"]];
+function appIcon(id){const a=APPS[id];if(!a)return null;
+  const el=E("div","icon",`<div class="sq" style="background:linear-gradient(150deg,${a.c[0]},${a.c[1]})">${ico(a.ic)}</div><div class="nm">${a.n}</div>`);
+  el.onclick=()=>openApp(id);return el}
+function buildHome(){
+  const h=$("#home");h.innerHTML="";
+  const wr=E("div","wrow");
+  wr.append(
+    E("div","wcard glass",'<div class="lbl">Now</div><div class="big" id="wclock">9:41</div><div class="muted">Wednesday, Apr 1</div>'),
+    E("div","wcard glass",'<div class="lbl">San Francisco</div><div class="big">54°</div><div class="muted">Partly cloudy · H57 L49</div>'));
+  h.appendChild(wr);
+  h.appendChild(E("div","wcard glass wide",'<div class="lbl">Today</div><div style="font-size:13px;font-weight:650">Design review · 10:00</div><div class="muted">Coffee with Sam · 13:30</div>'));
+  const pg=E("div","pages");h.appendChild(pg);
+  PAGES.forEach((p,i)=>{const d=E("div","page"+(i?" off":""));pg.appendChild(d);
+    p.forEach(id=>{const ic=appIcon(id);if(ic)d.appendChild(ic)})});
+  CATALOG.forEach(([n,c,col])=>{if(S.installed.includes(n)){
+    const sq=E("div","icon",`<div class="sq" style="background:${col}">${ico("star")}</div><div class="nm">${n}</div>`);
+    sq.onclick=()=>toast(n+" opened");pg.children[2].appendChild(sq)}});
+  const dr=E("div","dotsrow");PAGES.forEach((_,i)=>dr.appendChild(E("i",i===S.page?"on":"")));h.appendChild(dr);
+  const dock=E("div","glass");dock.id="dock";h.appendChild(dock);
+  ["messages","browser","photos","settings"].forEach(id=>dock.appendChild(appIcon(id)));
+  let sx=0;
+  pg.addEventListener("pointerdown",e=>sx=e.clientX);
+  pg.addEventListener("pointerup",e=>{const dx=e.clientX-sx;
+    if(Math.abs(dx)>50){S.page=Math.max(0,Math.min(PAGES.length-1,S.page+(dx<0?1:-1)));save();
+      [...pg.children].forEach((c,i)=>c.classList.toggle("off",i!==S.page));
+      [...dr.children].forEach((c,i)=>c.classList.toggle("on",i===S.page))}});
+  setInterval(()=>{const c=$("#wclock");if(c)c.textContent=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})},5000);
+}
+
+/* ---------- NAV ---------- */
+let stack=[],recent=[];
+function renderApp(id,opts){
+  const a=APPS[id];if(!a)return;
+  const layer=$("#appLayer");layer.classList.add("on");layer.innerHTML="";
+  const app=E("div","app");
+  const head=E("div","apphead",`<div class="back">${ico("back")}</div><div class="t">${a.n}</div>`);
+  head.querySelector(".back").onclick=goBack;
+  const body=E("div","appbody");
+  app.append(head,body);layer.appendChild(app);
+  a.fn(body,opts);
+  stack.push(id);
+  $("#nav").classList.add("on");
+  $("#aiFab").style.display=id==="ai"?"none":"flex";
+}
+function openApp(id,opts){renderApp(id,opts);recent=recent.filter(x=>x!==id);recent.push(id)}
+function goBack(){stack.pop();if(stack.length)renderApp(stack[stack.length-1]);else goHome()}
+function closeAll(){$("#appLayer").classList.remove("on");$("#appLayer").innerHTML="";$("#nav").classList.remove("on");$("#aiFab").style.display="none";stack=[]}
+function goHome(){closeAll();$("#home").classList.remove("away")}
+
+/* ---------- DESK ---------- */
+let deskOn=false;
+function toggleDesk(){
+  deskOn=!deskOn;const d=$("#desk");
+  if(!deskOn){d.classList.remove("on");d.innerHTML="";return}
+  closeAll();d.classList.add("on");d.innerHTML="";
+  const di=E("div");di.id="deskIcons";
+  ["files","notes","browser","settings"].forEach(id=>di.appendChild(appIcon(id)));d.appendChild(di);
+  const menu=E("div","glass");menu.id="startMenu";
+  Object.keys(APPS).slice(0,20).forEach(id=>menu.appendChild(appIcon(id)));
+  const tb=E("div","glass");tb.id="taskbar";
+  const st=E("div","tb",ico("shortcuts"));
+  st.onclick=e=>{e.stopPropagation();menu.classList.toggle("on")};
+  tb.appendChild(st);
+  ["browser","files","ai"].forEach(id=>{const x=E("div","tb",ico(APPS[id].ic));x.onclick=()=>makeWin(id);tb.appendChild(x)});
+  const ex=E("div","tb",ico("back"));ex.onclick=toggleDesk;tb.appendChild(ex);
+  d.append(tb,menu);
+}
+function makeWin(id){
+  const d=$("#desk");if(!deskOn)return;
+  const a=APPS[id];if(!a)return;
+  const w=E("div","win");
+  w.innerHTML=`<div class="wbar"><span class="wd" style="background:${a.c[0]}"></span><span class="wt">${a.n}</span>
+    <span class="wb" data-a="min">–</span><span class="wb" data-a="close">✕</span></div><div class="wbody"></div>`;
+  w.style.left=rnd(20,110)+"px";w.style.top=rnd(60,200)+"px";
+  d.appendChild(w);a.fn(w.querySelector(".wbody"));
+  const bar=w.querySelector(".wbar");let dx=0,dy=0,drag=false;
+  bar.onpointerdown=e=>{if(e.target.dataset.a)return;drag=true;
+    const r=w.getBoundingClientRect();dx=e.clientX-r.left;dy=e.clientY-r.top};
+  bar.onpointermove=e=>{if(!drag)return;w.style.left=(e.clientX-dx)+"px";w.style.top=Math.max(10,e.clientY-dy)+"px"};
+  bar.onpointerup=()=>drag=false;
+  w.querySelector('[data-a="close"]').onclick=()=>w.remove();
+  w.querySelector('[data-a="min"]').onclick=()=>w.style.display="none";
+  $("#startMenu").classList.remove("on");
+}
+
+/* ---------- CONTROL CENTER ---------- */
+function buildCC(){
+  const cc=$("#cc");cc.innerHTML="";
+  const top=E("div","cctop");
+  const T=(ic,label,on,fn)=>{const t=E("div","cctile "+(on?"act":"off2"),`${ico(ic)}<span>${label}</span>`);
+    t.onclick=()=>{fn();buildCC()};return t};
+  top.append(
+    T("wifi","Wi-Fi",S.wifiOn,()=>{S.wifiOn=!S.wifiOn;save()}),
+    T("bt","Bluetooth",S.bt,()=>{S.bt=!S.bt;save()}),
+    T("moon","Focus",S.dnd,()=>{S.dnd=!S.dnd;save()}),
+    T("onedesk","OneDesk",false,()=>{$("#cc").classList.remove("on");toggleDesk()}));
+  cc.appendChild(top);
+  const mk=(ic,val,fn)=>{const s=E("div","slider glass",`<div class="fill" style="width:${val}%"></div><span class="lbl">${ico(ic)}</span>`);
+    const r=E("input");r.type="range";r.min=0;r.max=100;r.value=val;
+    r.oninput=e=>{fn(+e.target.value);s.querySelector(".fill").style.width=e.target.value+"%"};s.appendChild(r);return s};
+  cc.appendChild(mk("sun",S.bright,()=>{}));
+  cc.appendChild(mk("vol",S.vol,()=>{}));
+  const foot=E("div","ccfoot");
+  const ai=E("div","chip on","✦ Ask OneAI");ai.onclick=()=>{$("#cc").classList.remove("on");openApp("ai")};
+  const off=E("div","chip","Close");off.onclick=()=>cc.classList.remove("on");
+  foot.append(ai,off);cc.appendChild(foot);
+}
+
+/* ---------- LOCK ---------- */
+function buildLock(){
+  const l=$("#lock");
+  l.innerHTML=`<div class="time" id="lkTime">9:41</div><div class="date" id="lkDate"></div>
+    <div class="lockwidgets">
+      <div class="lw glass">${ico("weather")}54° SF</div>
+      <div class="lw glass">${ico("calendar")}3 events</div>
+      <div class="lw glass" id="lwai">${ico("ai")}OneAI</div></div>
+    <div class="lockbottom"><div class="hint">Swipe up to unlock</div><div class="pill"></div></div>`;
+  const up=()=>{const n=new Date();
+    $("#lkTime").textContent=n.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}).replace(/^0/,"");
+    $("#lkDate").textContent=n.toLocaleDateString([],{weekday:"long",month:"long",day:"numeric"}).replace(",","")};
+  up();setInterval(up,1000);
+  $("#lwai",l).onclick=()=>{unlock();setTimeout(()=>openApp("ai"),450)};
+  l.addEventListener("pointerdown",e=>l.dataset.y=e.clientY);
+  l.addEventListener("pointerup",e=>{if(+l.dataset.y-e.clientY>60)unlock()});
+}
+function unlock(){const l=$("#lock");l.classList.add("up");buildHome()}
+
+/* ---------- SETUP ---------- */
+let step=0;
+const STEPS=[
+ {h:"Hello.",p:"OneOS is a liquid-glass system built on OneUI foundations — with OneDesk, OneAI and a full app suite.",b:"Get started"},
+ {h:"Language",p:"Choose your system language.",opts:["English (US)","Español","Français","Deutsch","한국어","日本語"]},
+ {h:"Wi-Fi",p:"Pick a network to continue.",wifi:true},
+ {h:"Your name",p:"OneOS personalizes OneAI and your device with this.",input:true},
+ {h:"OneAI",p:"An assistant that can actually drive the OS — open apps, change settings, install things.",toggle:true},
+ {h:"Appearance",p:"Dark, minimal, liquid glass. Pick an accent.",accent:true},
+ {h:"Almost done",p:"OneOS collects diagnostics to improve the build.",b:"Finish setup"}];
+function buildSetup(){
+  const s=$("#setup");s.innerHTML="";
+  const st=STEPS[step];
+  s.appendChild(E("div","setuphead",'<div class="orb"></div>'));
+  s.appendChild(E("h1",null,st.h));s.appendChild(E("p","sub",st.p));
+  if(st.opts)st.opts.forEach(o=>{const d=E("div","opt"+(S.lang===o?" sel":""),`${o}<span class="chk"></span>`);
+    d.onclick=()=>{S.lang=o;buildSetup()};s.appendChild(d)});
+  if(st.wifi){
+    ["OneOS_5G","HomeNet","Cafe_Guest","Neighbour"].forEach(n=>{const d=E("div","opt",`${n}${S.wifi===n?" ✓":""}`);
+      d.onclick=()=>{S.wifi=n;toast("Connected to "+n);buildSetup()};s.appendChild(d)});
+    if(S.wifi)s.appendChild(E("div","muted","Connected."))}
+  if(st.input){const i=E("input","field");i.value=S.name;i.oninput=e=>S.name=e.target.value||"Alex";s.appendChild(i)}
+  if(st.toggle){const r=E("div","opt",`<span>Enable OneAI</span><span class="sw${S.ai?" on":""}"><i></i></span>`);
+    r.onclick=()=>{S.ai=!S.ai;buildSetup()};s.appendChild(r)}
+  if(st.accent){const row=E("div");row.style.cssText="display:flex;gap:12px;justify-content:center;margin:10px 0";
+    [["#5b8cff","#a06bff"],["#a855f7","#6d28d9"],["#22c55e","#0d9488"],["#f43f5e","#9f1239"],["#f59e0b","#c2410c"]].forEach(([a,bb])=>{
+      const d=E("div");
+      d.style.cssText=`width:44px;height:44px;border-radius:50%;background:linear-gradient(140deg,${a},${bb});cursor:pointer;border:2px solid ${S.accent===a?"#fff":"transparent"}`;
+      d.onclick=()=>{S.accent=a;S.accent2=bb;applyTheme();buildSetup()};row.appendChild(d)});
+    s.appendChild(row)}
+  const dots=E("div","dots");STEPS.forEach((_,i)=>dots.appendChild(E("i",i===step?"on":"")));s.appendChild(dots);
+  const btn=E("div","btn",st.b||"Continue");
+  btn.onclick=()=>{
+    if(step<STEPS.length-1){step++;buildSetup()}
+    else{S.setup=true;save();$("#setup").style.display="none";buildLock();buildHome();toast("Welcome to OneOS, "+S.name)}};
+  s.appendChild(btn);
+  if(step>0){const bk=E("div","btn ghost","Back");bk.style.marginTop="8px";
+    bk.onclick=()=>{step--;buildSetup()};s.appendChild(bk)}
+}
+
+/* ---------- BOOT ---------- */
+function boot(){
+  applyTheme();
+  const b=E("div",null,'<div class="logo">OneOS</div><div class="bar"><i></i></div>');b.id="boot";
+  $("#root").appendChild(b);
+  setTimeout(()=>{b.remove();if(!S.setup)buildSetup();else{buildLock();buildHome()}},2600);
+}
+$("#navHome").onclick=goHome;
+$("#navBack").onclick=goBack;
+$("#navRec").onclick=()=>{
+  const r=$("#recents");r.innerHTML="";
+  const t=E("div",null,"Recents");t.style.cssText="text-align:center;font-weight:750;margin-bottom:16px";r.appendChild(t);
+  const id=recent[recent.length-1];
+  if(id&&APPS[id]){const a=APPS[id];
+    const c=E("div","rcard",`<div class="rt"><i style="background:linear-gradient(140deg,${a.c[0]},${a.c[1]})"></i>${a.n}</div>`);
+    c.onclick=()=>{r.classList.remove("on");openApp(id)};r.appendChild(c)}
+  else r.appendChild(E("div","muted","No recent apps"));
+  const cl=E("div","chip","Clear all");cl.style.cssText="margin:0 auto";cl.onclick=()=>{closeAll();r.classList.remove("on")};r.appendChild(cl);
+  r.classList.add("on");
+};
+$("#aiFab").onclick=()=>openApp("ai");
+$("#sb").onclick=()=>{buildCC();$("#cc").classList.add("on")};
+buildHome();boot();tick();setInterval(tick,10000);
+</script>
 </body>
 </html>
